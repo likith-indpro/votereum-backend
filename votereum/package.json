@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx directus start",
+    "bootstrap": "npx directus bootstrap",
+    "schema:apply": "npx directus schema apply ./schema.yaml --yes",
+    "schema:snapshot": "npx directus schema snapshot ./schema.yaml --yes",
+    "dev": "npx directus start"
   },
   "keywords": [],
   "author": "",
