@@ -88,6 +88,38 @@ export default defineEndpoint((router, { services, getSchema }) => {
     );
   }
 
+  // Add this new endpoint to your existing exports
+
+  // Verify signature endpoint
+  router.post("/verify-signature", async (req, res, next) => {
+    try {
+      const { message, signature, address } = req.body;
+
+      // If address is provided, verify that address
+      // Otherwise, just return the recovered address
+      if (address) {
+        const isValid = verifySignature(address, signature, message);
+        res.json({ data: { isValid } });
+      } else {
+        // Recover address from signature
+        try {
+          const recoveredAddress = ethers.verifyMessage(message, signature);
+          res.json({ data: { address: recoveredAddress } });
+        } catch (error) {
+          console.error("Error recovering address from signature:", error);
+          throw new Error("Invalid signature format");
+        }
+      }
+    } catch (error) {
+      console.error("Error verifying signature:", error);
+      next(
+        new ServiceUnavailableException(
+          error.message || "An error occurred while verifying the signature"
+        )
+      );
+    }
+  });
+
   // Create a new election
   router.post("/election", async (req, res, next) => {
     try {

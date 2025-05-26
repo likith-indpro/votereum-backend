@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
+const BLOCKCHAIN_ENDPOINT = `${API_URL}/blockchain-voting`;
 const ADMIN_ROLE_ID = "5769ed7c-8096-4047-a581-6ffa7c5dafec"; // The UUID from your response
 
 const api = axios.create({
@@ -50,6 +51,7 @@ if (token) {
   setAuthToken(token);
 }
 
+// Authentication Service
 export const authService = {
   login: async (email: string, password: string) => {
     // First, authenticate with Directus
@@ -191,6 +193,27 @@ export const authService = {
     }
   },
 
+  uploadAvatar: async (file: File): Promise<string> => {
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Upload the file to Directus Files
+      const response = await api.post("/files", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Return the file ID
+      return response.data.data.id;
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      throw error;
+    }
+  },
+
   connectMetamask: async (address: string) => {
     try {
       // Use /users/me endpoint instead of /users/{id}
@@ -247,29 +270,200 @@ export const authService = {
     }
   },
 
-  /**
-   * Upload an avatar image to Directus
-   */
-  uploadAvatar: async (file: File): Promise<string> => {
+  verifyMetaMaskSignature: async (message: string, signature: string) => {
     try {
-      // Create a FormData object to send the file
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // Upload the file to Directus Files
-      const response = await api.post("/files", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      // Return the file ID
-      return response.data.data.id;
+      const response = await api.post(
+        `${BLOCKCHAIN_ENDPOINT}/verify-signature`,
+        {
+          message,
+          signature,
+        }
+      );
+      return response.data;
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      console.error("Error verifying signature:", error);
       throw error;
     }
   },
+};
+
+// Election Service for blockchain integration
+export const electionService = {
+  // Get all elections
+  getElections: async () => {
+    try {
+      const response = await api.get("/items/elections");
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching elections:", error);
+      throw error;
+    }
+  },
+
+  // Get single election details
+  getElection: async (id: string) => {
+    try {
+      const response = await api.get(`/items/elections/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching election ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Get candidates for an election
+  getCandidates: async (electionId: string) => {
+    try {
+      const response = await api.get(`/items/candidates`, {
+        params: {
+          filter: { election: { _eq: electionId } },
+        },
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error(
+        `Error fetching candidates for election ${electionId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  // Check if user is eligible to vote in an election
+  checkEligibility: async (electionId: string) => {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) throw new Error("User not authenticated");
+
+      const response = await api.get(`/items/voters`, {
+        params: {
+          filter: {
+            election: { _eq: electionId },
+            voter_user: { _eq: currentUser.id },
+          },
+        },
+      });
+
+      // If there's a record, the user is eligible
+      return response.data.data.length > 0
+        ? { eligible: true, voted: response.data.data[0].voted }
+        : { eligible: false, voted: false };
+    } catch (error) {
+      console.error(
+        `Error checking eligibility for election ${electionId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  // Vote in an election
+  vote: async (electionId: string, candidateId: string) => {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) throw new Error("User not authenticated");
+
+      // Make sure user has connected MetaMask
+      if (!currentUser.ethereum_address) {
+        throw new Error("Please connect your MetaMask wallet before voting");
+      }
+
+      // Get message to sign
+      const message = `Vote in election ${electionId} for candidate ${candidateId}`;
+
+      // Request signature from user
+      // This will need to be handled from UI using window.ethereum
+      // Here we handle it as if the signature was already provided
+      const signature = await requestSignatureFromUser(message);
+
+      // Send vote to blockchain endpoint
+      const response = await api.post(`${BLOCKCHAIN_ENDPOINT}/vote`, {
+        electionId,
+        candidateId,
+        voterAddress: currentUser.ethereum_address,
+        signature,
+        message,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error voting in election ${electionId}:`, error);
+      throw error;
+    }
+  },
+
+  // Get election results from blockchain
+  getResults: async (electionId: string) => {
+    try {
+      const response = await api.get(
+        `${BLOCKCHAIN_ENDPOINT}/election/${electionId}/results`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(
+        `Error fetching results for election ${electionId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  // Admin: Create a new election
+  createElection: async (electionData: {
+    title: string;
+    description: string;
+    startTime: Date;
+    endTime: Date;
+    candidatesList: Array<{
+      name: string;
+      description?: string;
+      img?: string;
+      email?: string;
+    }>;
+    adminWallet: string;
+    company_meta_id?: string;
+  }) => {
+    try {
+      const response = await api.post(
+        `${BLOCKCHAIN_ENDPOINT}/election`,
+        electionData
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error creating election:", error);
+      throw error;
+    }
+  },
+};
+
+// Helper function to request signature from user
+// This is called from the vote function
+const requestSignatureFromUser = async (message: string): Promise<string> => {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not installed");
+  }
+
+  try {
+    // Connect to MetaMask if not already connected
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No accounts found. Please connect MetaMask first.");
+    }
+
+    // Request signature from the user
+    const signature = await window.ethereum.request({
+      method: "personal_sign",
+      params: [message, accounts[0]],
+    });
+
+    return signature;
+  } catch (error) {
+    console.error("Error requesting signature:", error);
+    throw error;
+  }
 };
 
 export default api;
