@@ -1,8 +1,7 @@
-// Update UserDashboard to fetch and display real elections
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import UserLayout from "../../components/UserLayout";
-import { electionService } from "../../services/apiService";
+import { electionService, authService } from "../../services/apiService";
 
 export default function UserDashboard() {
   const [elections, setElections] = useState([]);
@@ -14,6 +13,7 @@ export default function UserDashboard() {
     const fetchElections = async () => {
       try {
         const electionData = await electionService.getElections();
+        console.log("Fetched elections:", electionData);
         setElections(electionData);
 
         // Check eligibility for each election
@@ -23,18 +23,23 @@ export default function UserDashboard() {
             const eligibility = await electionService.checkEligibility(
               election.id
             );
+            console.log(
+              `Eligibility for election ${election.id}:`,
+              eligibility
+            );
             eligibilityData[election.id] = eligibility;
           } catch (err) {
             console.error(
               `Error checking eligibility for election ${election.id}:`,
               err
             );
+            eligibilityData[election.id] = { eligible: false, voted: false };
           }
         }
         setUserEligibility(eligibilityData);
       } catch (err) {
         setError("Failed to load elections");
-        console.error(err);
+        console.error("Error fetching elections:", err);
       } finally {
         setLoading(false);
       }
@@ -57,12 +62,38 @@ export default function UserDashboard() {
   // Calculate status and time remaining
   const getElectionStatus = (election) => {
     const now = new Date();
-    const startDate = new Date(election.start_time);
-    const endDate = new Date(election.end_time);
+
+    // Make sure the dates are valid
+    let startDate, endDate;
+    try {
+      startDate = new Date(election.start_time || election.startTime);
+      endDate = new Date(election.end_time || election.endTime);
+
+      // Validate the dates
+      if (isNaN(startDate.getTime())) {
+        console.warn(
+          `Invalid start time for election ${election.id}:`,
+          election.start_time || election.startTime
+        );
+        startDate = new Date(); // Fallback to current time
+      }
+
+      if (isNaN(endDate.getTime())) {
+        console.warn(
+          `Invalid end time for election ${election.id}:`,
+          election.end_time || election.endTime
+        );
+        endDate = new Date(now.getTime() + 86400000); // Fallback to 24h from now
+      }
+    } catch (e) {
+      console.error("Error parsing election dates:", e);
+      return { status: "unknown", text: "Date error" };
+    }
 
     if (now < startDate) {
-      const daysRemaining = Math.ceil(
-        (startDate - now) / (1000 * 60 * 60 * 24)
+      const daysRemaining = Math.max(
+        1,
+        Math.ceil((startDate - now) / (1000 * 60 * 60 * 24))
       );
       return {
         status: "upcoming",
@@ -71,12 +102,28 @@ export default function UserDashboard() {
     } else if (now > endDate) {
       return { status: "closed", text: "Election closed" };
     } else {
-      const daysRemaining = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+      const daysRemaining = Math.max(
+        1,
+        Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
+      );
       return {
         status: "open",
         text: `Closing in ${daysRemaining} day${daysRemaining !== 1 ? "s" : ""}`,
       };
     }
+  };
+
+  // For debugging: show raw election data
+  const showRawData = (election) => {
+    console.log("Election details:", {
+      id: election.id,
+      name: election.name,
+      startTime: election.start_time || election.startTime,
+      endTime: election.end_time || election.endTime,
+      parsedStartTime: new Date(election.start_time || election.startTime),
+      parsedEndTime: new Date(election.end_time || election.endTime),
+      status: getElectionStatus(election),
+    });
   };
 
   return (
@@ -124,9 +171,13 @@ export default function UserDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
             {elections.map((election) => {
+              // Debug election data
+              showRawData(election);
+
               const statusInfo = getElectionStatus(election);
+              // Default to eligible for now (fix this when API is ready)
               const eligibility = userEligibility[election.id] || {
-                eligible: false,
+                eligible: true,
                 voted: false,
               };
 
@@ -191,9 +242,15 @@ export default function UserDashboard() {
                     )}
 
                     {!eligibility.eligible && statusInfo.status === "open" && (
-                      <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-500 bg-gray-50">
-                        Not Eligible
-                      </span>
+                      <div>
+                        <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-500 bg-gray-50">
+                          Not Eligible
+                        </span>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Contact an administrator if you believe this is
+                          incorrect.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -250,7 +307,9 @@ export default function UserDashboard() {
                               {election.name}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {formatDate(election.end_time)}
+                              {formatDate(
+                                election.end_time || election.endTime
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
