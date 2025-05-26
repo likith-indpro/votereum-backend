@@ -1,3 +1,4 @@
+// filepath: c:\Users\likit\OneDrive\Desktop\Votereum\votereum-backend\votereum-frontend\src\services\apiService.ts
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
@@ -8,6 +9,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // Important for cookies handling
 });
 
 // Add a response interceptor to handle errors
@@ -27,9 +29,18 @@ export const setAuthToken = (token: string | null) => {
   if (token) {
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     localStorage.setItem("authToken", token);
+    // Store the refresh token as well
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      document.cookie = `directus_refresh_token=${refreshToken}; path=/; max-age=604800`; // 7 days
+    }
   } else {
     delete api.defaults.headers.common["Authorization"];
     localStorage.removeItem("authToken");
+    localStorage.removeItem("refreshToken");
+    // Clear the cookie too
+    document.cookie =
+      "directus_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
   }
 };
 
@@ -44,8 +55,12 @@ export const authService = {
     // First, authenticate with Directus
     const response = await api.post("/auth/login", { email, password });
 
-    // Store the access token
+    // Store the access token and refresh token
     setAuthToken(response.data.data.access_token);
+    localStorage.setItem("refreshToken", response.data.data.refresh_token);
+
+    // Store refresh token in cookie for Directus
+    document.cookie = `directus_refresh_token=${response.data.data.refresh_token}; path=/; max-age=604800`; // 7 days
 
     // Then, fetch the current user to get complete role information
     const userResponse = await api.get("/users/me");
@@ -77,12 +92,25 @@ export const authService = {
   },
 
   logout: async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+
     try {
-      await api.post("/auth/logout");
+      if (refreshToken) {
+        // Include the refresh token in the logout request
+        await api.post("/auth/logout", { refresh_token: refreshToken });
+      } else {
+        // Try a token-less logout, this may fail but we'll handle it
+        await api.post("/auth/logout");
+      }
+    } catch (error) {
+      console.warn("Server logout failed:", error);
+      // We'll handle this error in the component
+      throw error;
     } finally {
-      // Always clear local storage and remove the token
+      // Always clear tokens and state
       setAuthToken(null);
       localStorage.removeItem("userData");
+      localStorage.removeItem("refreshToken");
     }
   },
 
