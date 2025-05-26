@@ -1,4 +1,3 @@
-// filepath: c:\Users\likit\OneDrive\Desktop\Votereum\votereum-backend\votereum-frontend\src\services\apiService.ts
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
@@ -16,6 +15,7 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error("API Error Details:", error.response?.data);
     // Handle Directus error responses
     const errorMessage =
       error.response?.data?.errors?.[0]?.message ||
@@ -87,8 +87,14 @@ export const authService = {
       // Default to regular user role
     };
 
-    const response = await api.post("/users", directusUser);
-    return response.data;
+    // Use the /users/register endpoint if available, or fall back to standard endpoint
+    try {
+      const response = await api.post("/users", directusUser);
+      return response.data;
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
   },
 
   logout: async () => {
@@ -146,6 +152,96 @@ export const authService = {
     } catch (error) {
       console.error("Error checking admin status:", error);
       return false;
+    }
+  },
+
+  updateProfile: async (userData: {
+    first_name?: string;
+    last_name?: string;
+    password?: string;
+    current_password?: string;
+  }) => {
+    try {
+      // Use /users/me endpoint instead of /users/{id}
+      // This is more secure and avoids permission issues
+      const response = await api.patch("/users/me", userData);
+
+      // Get the current user data
+      const currentUser = authService.getCurrentUser();
+
+      // Update local storage with the updated user data
+      // But keep some fields like role that aren't returned in the response
+      const updatedUser = {
+        ...currentUser,
+        first_name: userData.first_name || currentUser.first_name,
+        last_name: userData.last_name || currentUser.last_name,
+      };
+
+      localStorage.setItem("userData", JSON.stringify(updatedUser));
+
+      // Refresh the user data from server
+      await authService.getCurrentUserWithRole();
+
+      return response.data;
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      throw error;
+    }
+  },
+
+  connectMetamask: async (address: string) => {
+    try {
+      // Use /users/me endpoint instead of /users/{id}
+      const response = await api.patch("/users/me", {
+        ethereum_address: address,
+      });
+
+      // Get the current user data
+      const currentUser = authService.getCurrentUser();
+
+      // Update local storage
+      const updatedUser = {
+        ...currentUser,
+        ethereum_address: address,
+      };
+
+      localStorage.setItem("userData", JSON.stringify(updatedUser));
+
+      // Refresh the user data from server
+      await authService.getCurrentUserWithRole();
+
+      return response.data;
+    } catch (error) {
+      console.error("Error connecting MetaMask:", error);
+      throw error;
+    }
+  },
+
+  disconnectMetamask: async () => {
+    try {
+      // Use /users/me endpoint instead of /users/{id}
+      const response = await api.patch("/users/me", {
+        ethereum_address: null,
+      });
+
+      // Get the current user data
+      const currentUser = authService.getCurrentUser();
+
+      // Update local storage
+      const updatedUser = {
+        ...currentUser,
+        ethereum_address: null,
+      };
+
+      localStorage.setItem("userData", JSON.stringify(updatedUser));
+
+      // Refresh the user data from server
+      await authService.getCurrentUserWithRole();
+
+      return response.data;
+    } catch (error) {
+      console.error("Error disconnecting MetaMask:", error);
+      throw error;
     }
   },
 };

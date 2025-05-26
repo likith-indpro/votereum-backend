@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import AdminDashboard from "../pages/admin/Dashboard";
 import UserDashboard from "../pages/user/Dasboard";
+import UserProfile from "../pages/user/Profile"; // Add this import
 import Home from "../pages/user/Home";
 import About from "../pages/user/About";
 import Login from "../pages/user/Login";
@@ -37,6 +38,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <UserDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/dashboard/profile", // Add this route
+    element: (
+      <ProtectedRoute>
+        <UserProfile />
       </ProtectedRoute>
     ),
   },
