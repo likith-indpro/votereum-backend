@@ -17,7 +17,7 @@ export default function NotFound() {
             </p>
             <div className="mt-6">
               <Link
-                to="/"
+                to="/Dashboard"
                 className="text-base font-medium text-blue-600 hover:text-blue-500"
               >
                 Go back home<span aria-hidden="true"> &rarr;</span>

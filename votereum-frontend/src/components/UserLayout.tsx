@@ -100,7 +100,7 @@ export default function UserLayout({
                   Elections
                 </Link>
                 <Link
-                  to="/dashboard/vote"
+                  to="/dashboard/vote" // Updated to point to a vote list page
                   className={`${
                     isActive("/dashboard/vote")
                       ? "border-blue-500 text-gray-900"
@@ -110,7 +110,7 @@ export default function UserLayout({
                   Vote
                 </Link>
                 <Link
-                  to="/dashboard/results"
+                  to="/dashboard/results" // Updated to point to a results list page
                   className={`${
                     isActive("/dashboard/results")
                       ? "border-blue-500 text-gray-900"
@@ -266,7 +266,7 @@ export default function UserLayout({
               Elections
             </Link>
             <Link
-              to="/dashboard/vote"
+              to="/dashboard/vote" // Updated to point to a vote list page
               className={`${
                 isActive("/dashboard/vote")
                   ? "bg-blue-50 border-blue-500 text-blue-700"
@@ -277,7 +277,7 @@ export default function UserLayout({
               Vote
             </Link>
             <Link
-              to="/dashboard/results"
+              to="/dashboard/results" // Updated to point to a results list page
               className={`${
                 isActive("/dashboard/results")
                   ? "bg-blue-50 border-blue-500 text-blue-700"

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import UserLayout from "../../components/UserLayout";
-import { electionService } from "../../services/apiService";
+import { electionService, authService } from "../../services/apiService";
 
 export default function Results() {
   const [election, setElection] = useState(null);

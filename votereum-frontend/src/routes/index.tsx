@@ -51,7 +51,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/dashboard/vote",
+    path: "/dashboard/vote/:id",
     element: (
       <ProtectedRoute>
         <Vote />
@@ -59,7 +59,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/dashboard/results",
+    path: "/dashboard/results/:id",
     element: (
       <ProtectedRoute>
         <Results />
