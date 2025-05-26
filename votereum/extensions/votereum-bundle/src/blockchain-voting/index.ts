@@ -144,15 +144,46 @@ export default defineEndpoint((router, { services, getSchema }) => {
       const electionAddress = extractElectionAddressFromLogs(receipt);
 
       // Add election to Directus
+      // Ensure company_meta_id is a valid UUID
+      let companyMetaId = req.body.company_meta_id;
+
+      // If it appears to be a numeric ID, fetch the actual UUID
+      if (
+        companyMetaId &&
+        (typeof companyMetaId === "number" || /^\d+$/.test(companyMetaId))
+      ) {
+        try {
+          // Create ItemsService for companies_meta
+          const companiesService = new ItemsService("companies_meta", {
+            schema,
+            accountability: req.accountability,
+          });
+
+          // Try to get the company record by numeric ID
+          const companies = await companiesService.readByQuery({
+            limit: 1,
+          });
+
+          if (companies && companies.length > 0) {
+            // Use the first company's UUID if available
+            companyMetaId = companies[0].id;
+            console.log(`Using company UUID: ${companyMetaId}`);
+          }
+        } catch (err) {
+          console.error("Error fetching company meta:", err);
+          // Continue with the original ID if fetch fails
+        }
+      }
+
       const election = await electionsService.createOne({
         name: title,
         description: description,
         authority_addr: adminWallet,
         status: false, // Not active yet
-        company_meta: req.body.company_meta_id, // Make sure this is a valid UUID, not a number
+        company_meta: companyMetaId, // Now using proper UUID
         blockchain_address: electionAddress, // Store blockchain address in Directus
       });
-      
+
       // Log the created election
       console.log("Created election in Directus:", election);
 
