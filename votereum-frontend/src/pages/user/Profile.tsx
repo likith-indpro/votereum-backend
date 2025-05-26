@@ -405,7 +405,7 @@ export default function Profile() {
                   type="file"
                   ref={fileInputRef}
                   onChange={handleAvatarChange}
-                  className="hidden"
+                  className="hidden absolute inset-0 w-full h-full cursor-pointer opacity-0"
                   accept="image/*"
                 />
               </div>
@@ -451,7 +451,7 @@ export default function Profile() {
                   id="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                  className="mt-1 focus:ring-blue-500 px-3 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md pt-3 pb-3"
                 />
               </div>
               <div>
@@ -467,7 +467,7 @@ export default function Profile() {
                   id="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                  className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md pt-3 pb-3 pl-3"
                 />
               </div>
             </div>
@@ -485,9 +485,9 @@ export default function Profile() {
                 id="email"
                 disabled
                 value={formData.email}
-                className="mt-1 bg-gray-100 cursor-not-allowed block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                className="mt-1 pl-3 bg-gray-100 cursor-not-allowed block w-full shadow-sm sm:text-sm border-gray-300 rounded-md pt-3 pb-3"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 pl-3 text-xs text-gray-500 pt-3 pb-3">
                 Email address cannot be changed. Please contact support if
                 needed.
               </p>
