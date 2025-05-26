@@ -1,152 +1,112 @@
-import { useState, useEffect } from "react";
-import Layout from "../../components/Layout";
-
-// Mock data - replace with actual API call later
-const mockData = {
-  totalElections: 5,
-  activeElections: 2,
-  completedElections: 3,
-  totalVoters: 150,
-  votedCount: 87,
-  participationRate: 58,
-  recentVotes: [
-    {
-      timestamp: "2025-05-25T10:30:00",
-      voter: "John Doe",
-      election: "Board Election",
-      candidate: "Candidate A",
-    },
-    {
-      timestamp: "2025-05-25T09:45:00",
-      voter: "Jane Smith",
-      election: "Board Election",
-      candidate: "Candidate B",
-    },
-    {
-      timestamp: "2025-05-24T16:20:00",
-      voter: "Mike Johnson",
-      election: "Tech Committee",
-      candidate: "Candidate C",
-    },
-  ],
-};
+import AdminLayout from "../../components/AdminLayout";
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(mockData);
-  const [loading, setLoading] = useState(false);
-
-  // Later replace with actual API call
-  useEffect(() => {
-    // Simulating API call
-    setLoading(true);
-    setTimeout(() => {
-      setStats(mockData);
-      setLoading(false);
-    }, 500);
-  }, []);
-
   return (
-    <Layout>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <AdminLayout title="Admin Dashboard">
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="px-4 py-5 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">
+            Platform Overview
+          </h3>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            Key metrics and administrative controls.
+          </p>
+        </div>
 
-      {loading ? (
-        <div className="text-center py-8">Loading dashboard data...</div>
-      ) : (
-        <>
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-gray-500 text-sm font-medium">
-                Total Elections
-              </h2>
-              <p className="text-3xl font-bold mt-2">{stats.totalElections}</p>
-              <div className="mt-2 text-xs text-gray-500">
-                {stats.activeElections} active, {stats.completedElections}{" "}
-                completed
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-gray-500 text-sm font-medium">
-                Registered Voters
-              </h2>
-              <p className="text-3xl font-bold mt-2">{stats.totalVoters}</p>
-              <div className="mt-2 text-xs text-gray-500">
-                {stats.totalVoters - stats.votedCount} have not voted yet
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-gray-500 text-sm font-medium">
-                Participation Rate
-              </h2>
-              <p className="text-3xl font-bold mt-2">
-                {stats.participationRate}%
-              </p>
-              <div className="mt-2 text-xs text-gray-500">
-                {stats.votedCount} votes cast
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+          <div className="bg-blue-50 p-4 rounded-lg shadow-sm">
+            <h4 className="text-lg font-semibold text-blue-700">
+              Active Elections
+            </h4>
+            <p className="text-3xl font-bold mt-2">3</p>
           </div>
 
-          {/* Recent Activity */}
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b">
-              <h2 className="font-medium">Recent Voting Activity</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Time
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Voter
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Election
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Choice
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {stats.recentVotes.map((vote, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(vote.timestamp).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {vote.voter}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {vote.election}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {vote.candidate}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="bg-green-50 p-4 rounded-lg shadow-sm">
+            <h4 className="text-lg font-semibold text-green-700">
+              Total Users
+            </h4>
+            <p className="text-3xl font-bold mt-2">256</p>
           </div>
-        </>
-      )}
-    </Layout>
+
+          <div className="bg-purple-50 p-4 rounded-lg shadow-sm">
+            <h4 className="text-lg font-semibold text-purple-700">
+              Total Votes Cast
+            </h4>
+            <p className="text-3xl font-bold mt-2">1,024</p>
+          </div>
+        </div>
+
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+            Recent Activity
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Event
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Election
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Time
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    Vote Cast
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    John Doe
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    Student Council 2023
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    2 minutes ago
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    New User Registered
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    Alice Smith
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    -
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    15 minutes ago
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    Election Created
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    Admin User
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    Faculty Senate 2023
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    1 hour ago
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </AdminLayout>
   );
 }

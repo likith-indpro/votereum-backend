@@ -1,11 +1,23 @@
 import { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../services/apiService";
 
-type LayoutProps = {
+type AdminLayoutProps = {
   children: ReactNode;
+  title?: string;
 };
 
-export default function Layout({ children }: LayoutProps) {
+export default function AdminLayout({
+  children,
+  title = "Admin Dashboard",
+}: AdminLayoutProps) {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await authService.logout();
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
@@ -52,13 +64,21 @@ export default function Layout({ children }: LayoutProps) {
                 Results
               </Link>
             </li>
-            <li className="pt-4 mt-4 border-t">
+            <li>
               <Link
-                to="/"
-                className="block p-2 hover:bg-gray-100 rounded text-gray-600"
+                to="/admin/users"
+                className="block p-2 hover:bg-gray-100 rounded"
               >
-                Exit Admin
+                User Management
               </Link>
+            </li>
+            <li className="pt-4 mt-4 border-t">
+              <button
+                onClick={handleLogout}
+                className="w-full text-left block p-2 hover:bg-red-50 rounded text-red-600"
+              >
+                Logout
+              </button>
             </li>
           </ul>
         </nav>
@@ -68,12 +88,19 @@ export default function Layout({ children }: LayoutProps) {
       <div className="flex-1 overflow-auto">
         <header className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto py-4 px-4 flex justify-between items-center">
-            <h1 className="text-lg font-semibold text-gray-900">
-              Admin Dashboard
-            </h1>
-            <div>
+            <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+            <div className="flex items-center">
               {/* User menu / profile */}
-              <span className="text-sm text-gray-600">Admin User</span>
+              <div className="relative ml-3">
+                <div className="flex items-center">
+                  <span className="hidden md:block text-sm text-gray-700 mr-2">
+                    Administrator
+                  </span>
+                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                    A
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </header>

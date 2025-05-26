@@ -1,152 +1,139 @@
-import { useState, useEffect } from "react";
-import Layout from "../../components/Layout";
-
-// Mock data - replace with actual API call later
-const mockData = {
-  totalElections: 5,
-  activeElections: 2,
-  completedElections: 3,
-  totalVoters: 150,
-  votedCount: 87,
-  participationRate: 58,
-  recentVotes: [
-    {
-      timestamp: "2025-05-25T10:30:00",
-      voter: "John Doe",
-      election: "Board Election",
-      candidate: "Candidate A",
-    },
-    {
-      timestamp: "2025-05-25T09:45:00",
-      voter: "Jane Smith",
-      election: "Board Election",
-      candidate: "Candidate B",
-    },
-    {
-      timestamp: "2025-05-24T16:20:00",
-      voter: "Mike Johnson",
-      election: "Tech Committee",
-      candidate: "Candidate C",
-    },
-  ],
-};
+import UserLayout from "../../components/UserLayout";
+import { Link } from "react-router-dom";
 
 export default function UserDashboard() {
-  const [stats, setStats] = useState(mockData);
-  const [loading, setLoading] = useState(false);
-
-  // Later replace with actual API call
-  useEffect(() => {
-    // Simulating API call
-    setLoading(true);
-    setTimeout(() => {
-      setStats(mockData);
-      setLoading(false);
-    }, 500);
-  }, []);
-
   return (
-    <Layout>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <UserLayout title="Dashboard">
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">
+            Your Voting Status
+          </h3>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            Current elections you can participate in.
+          </p>
+        </div>
 
-      {loading ? (
-        <div className="text-center py-8">Loading dashboard data...</div>
-      ) : (
-        <>
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-gray-500 text-sm font-medium">
-                Total Elections
-              </h2>
-              <p className="text-3xl font-bold mt-2">{stats.totalElections}</p>
-              <div className="mt-2 text-xs text-gray-500">
-                {stats.activeElections} active, {stats.completedElections}{" "}
-                completed
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+          <div className="border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-lg font-semibold">
+                  Student Council Election
+                </h4>
+                <p className="text-sm text-gray-500 mt-1">Closing in 2 days</p>
               </div>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Open
+              </span>
             </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-gray-500 text-sm font-medium">
-                Registered Voters
-              </h2>
-              <p className="text-3xl font-bold mt-2">{stats.totalVoters}</p>
-              <div className="mt-2 text-xs text-gray-500">
-                {stats.totalVoters - stats.votedCount} have not voted yet
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-gray-500 text-sm font-medium">
-                Participation Rate
-              </h2>
-              <p className="text-3xl font-bold mt-2">
-                {stats.participationRate}%
-              </p>
-              <div className="mt-2 text-xs text-gray-500">
-                {stats.votedCount} votes cast
-              </div>
+            <p className="mt-3 text-sm text-gray-600">
+              Cast your vote for the 2023 Student Council representatives.
+            </p>
+            <div className="mt-4">
+              <Link
+                to="/dashboard/vote/1"
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Vote Now
+              </Link>
             </div>
           </div>
 
-          {/* Recent Activity */}
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b">
-              <h2 className="font-medium">Recent Voting Activity</h2>
+          <div className="border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-lg font-semibold">
+                  Faculty Senate Election
+                </h4>
+                <p className="text-sm text-gray-500 mt-1">Opens in 5 days</p>
+              </div>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Upcoming
+              </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Time
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Voter
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Election
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Choice
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {stats.recentVotes.map((vote, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(vote.timestamp).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {vote.voter}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {vote.election}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {vote.candidate}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <p className="mt-3 text-sm text-gray-600">
+              Faculty Senate representatives for the academic year 2023-2024.
+            </p>
+            <div className="mt-4">
+              <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                Coming Soon
+              </span>
             </div>
           </div>
-        </>
-      )}
-    </Layout>
+        </div>
+
+        <div className="px-4 py-5 sm:p-6 border-t border-gray-200">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+            Your Voting History
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Election
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    Dormitory Representatives
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    May 12, 2023
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      Voted
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <Link
+                      to="/dashboard/results/3"
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      View Results
+                    </Link>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    Budget Committee
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    April 3, 2023
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      Voted
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <Link
+                      to="/dashboard/results/2"
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      View Results
+                    </Link>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </UserLayout>
   );
 }
