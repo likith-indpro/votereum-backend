@@ -57,26 +57,6 @@ export const authService = {
     };
   },
 
-  loginWithMetamask: async (address: string, signature: string) => {
-    // This would be your custom endpoint to verify ethereum signatures
-    const response = await api.post("/auth/login/metamask", {
-      address,
-      signature,
-    });
-
-    // Store the access token
-    setAuthToken(response.data.data.access_token);
-
-    // Then, fetch the current user to get complete role information
-    const userResponse = await api.get("/users/me");
-    localStorage.setItem("userData", JSON.stringify(userResponse.data.data));
-
-    return {
-      ...response.data,
-      userData: userResponse.data.data,
-    };
-  },
-
   signup: async (userData: {
     firstName: string;
     lastName: string;
@@ -93,24 +73,6 @@ export const authService = {
     };
 
     const response = await api.post("/users", directusUser);
-    return response.data;
-  },
-
-  signupWithMetamask: async (
-    address: string,
-    userData: {
-      firstName: string;
-      lastName: string;
-      email: string;
-    }
-  ) => {
-    // This would be your custom endpoint to register users with ethereum addresses
-    const response = await api.post("/users/metamask", {
-      address,
-      first_name: userData.firstName,
-      last_name: userData.lastName,
-      email: userData.email,
-    });
     return response.data;
   },
 

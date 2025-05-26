@@ -1,3 +1,4 @@
+// filepath: c:\Users\likit\OneDrive\Desktop\Votereum\votereum-backend\votereum-frontend\src\pages\user\SignUp.tsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../../services/apiService";
@@ -11,7 +12,6 @@ export default function SignUp() {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
-  const [metamaskLoading, setMetamaskLoading] = useState(false);
   const [error, setError] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const navigate = useNavigate();
@@ -63,68 +63,6 @@ export default function SignUp() {
     }
   };
 
-  const signUpWithMetamask = async () => {
-    setError("");
-    setMetamaskLoading(true);
-
-    // Validate form first
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      setError("Please fill in your name and email");
-      setMetamaskLoading(false);
-      return;
-    }
-
-    if (!agreeToTerms) {
-      setError("You must agree to the terms and conditions");
-      setMetamaskLoading(false);
-      return;
-    }
-
-    try {
-      // Check if MetaMask is installed
-      if (typeof window.ethereum === "undefined") {
-        throw new Error(
-          "MetaMask is not installed. Please install it to continue."
-        );
-      }
-
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-
-      // Get the connected address
-      const address = accounts[0];
-
-      // Register with MetaMask address
-      await authService.signupWithMetamask(address, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-      });
-
-      // Redirect to login page
-      navigate("/login", {
-        state: {
-          message: "Account created successfully! Please login with MetaMask.",
-        },
-      });
-    } catch (err) {
-      console.error(err);
-      if (err instanceof Error) {
-        if (err.message.includes("User rejected")) {
-          setError("You rejected the connection request.");
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError("Failed to connect with MetaMask");
-      }
-    } finally {
-      setMetamaskLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
@@ -147,7 +85,7 @@ export default function SignUp() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
             <p>{error}</p>
           </div>
         )}
@@ -301,67 +239,6 @@ export default function SignUp() {
             </button>
           </div>
         </form>
-
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">
-                Or sign up with
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={signUpWithMetamask}
-              disabled={metamaskLoading}
-              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-            >
-              {metamaskLoading ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Connecting...
-                </span>
-              ) : (
-                <>
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    viewBox="0 0 35 33"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    {/* MetaMask SVG paths */}
-                    {/* ... SVG paths remain the same ... */}
-                  </svg>
-                  Sign up with MetaMask
-                </>
-              )}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
