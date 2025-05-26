@@ -1,14 +1,21 @@
 import { createBrowserRouter } from "react-router-dom";
 import AdminDashboard from "../pages/admin/Dashboard";
+// import AdminElections from "../pages/admin/Elections";
+import CreateElection from "../pages/admin/CreateElection";
+// import ManageVoters from "../pages/admin/ManageVoters";
 import UserDashboard from "../pages/user/Dasboard";
-import UserProfile from "../pages/user/Profile"; // Add this import
+import UserProfile from "../pages/user/Profile";
+import Vote from "../pages/user/Vote";
+import Results from "../pages/user/Result";
 import Home from "../pages/user/Home";
 import About from "../pages/user/About";
 import Login from "../pages/user/Login";
 import SignUp from "../pages/user/SignUp";
 import ProtectedRoute from "../components/ProtectedRoutes";
+import NotFound from "../pages/NotFound";
 
 const router = createBrowserRouter([
+  // Public routes
   {
     path: "/",
     element: <Home />,
@@ -25,14 +32,8 @@ const router = createBrowserRouter([
     path: "/signup",
     element: <SignUp />,
   },
-  {
-    path: "/admin",
-    element: (
-      <ProtectedRoute requireAdmin={true}>
-        <AdminDashboard />
-      </ProtectedRoute>
-    ),
-  },
+
+  // User routes
   {
     path: "/dashboard",
     element: (
@@ -42,14 +43,69 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/dashboard/profile", // Add this route
+    path: "/dashboard/profile",
     element: (
       <ProtectedRoute>
         <UserProfile />
       </ProtectedRoute>
     ),
   },
-  // Other routes will be added as we create more pages
+  {
+    path: "/dashboard/vote",
+    element: (
+      <ProtectedRoute>
+        <Vote />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/dashboard/results",
+    element: (
+      <ProtectedRoute>
+        <Results />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Admin routes
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute requireAdmin={true}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    ),
+  },
+  //   {
+  //     path: "/admin/elections",
+  //     element: (
+  //       <ProtectedRoute requireAdmin={true}>
+  //         <AdminElections />
+  //       </ProtectedRoute>
+  //     ),
+  //   },
+  {
+    path: "/admin/elections/create",
+    element: (
+      <ProtectedRoute requireAdmin={true}>
+        <CreateElection />
+      </ProtectedRoute>
+    ),
+  },
+  //   {
+  //     path: "/admin/voters",
+  //     element: (
+  //       <ProtectedRoute requireAdmin={true}>
+  //         <ManageVoters />
+  //       </ProtectedRoute>
+  //     ),
+  //   },
+
+  // 404 route
+  {
+    path: "*",
+    element: <NotFound />,
+  },
 ]);
 
 export default router;
