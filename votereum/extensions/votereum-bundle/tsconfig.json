@@ -22,6 +22,16 @@
 		"forceConsistentCasingInFileNames": true,
 		"allowSyntheticDefaultImports": true,
 		"isolatedModules": true,
+		"module": "NodeNext",
+
+    "target": "ES2020",
+
+    "moduleResolution": "NodeNext",
+
+    "esModuleInterop": true,
+
+    "strict": true,
+
 		"rootDir": "./src"
 	},
 	"include": ["./src/**/*.ts"]

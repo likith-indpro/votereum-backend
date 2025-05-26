@@ -19,35 +19,11 @@
 			"api": "dist/api.js"
 		},
 		"entries": [
-			{
-				"type": "endpoint",
-				"name": "voters",
-				"source": "src/voters/index.ts"
-			},
-			{
-				"type": "endpoint",
-				"name": "register",
-				"source": "src/register/index.ts"
-			},
-			{
-				"type": "endpoint",
-				"name": "users",
-				"source": "src/users/index.ts"
-			},
-			{
-				"type": "endpoint",
-				"name": "votereum-users",
-				"source": "src/votereum-users/index.ts"
-			},
+
 			{
 				"type": "hook",
 				"name": "user-invitation",
 				"source": "src/user-invitation/index.ts"
-			},
-			{
-				"type": "theme",
-				"name": "test",
-				"source": "src/test/index.ts"
 			},
 			{
 				"type": "endpoint",
