@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import UserLayout from "../../components/UserLayout";
 import { authService } from "../../services/apiService";
 
@@ -13,6 +13,12 @@ export default function Profile() {
     confirmPassword: "",
   });
 
+  // State for avatar
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // State for MetaMask
   const [ethereumAddress, setEthereumAddress] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
@@ -23,6 +29,9 @@ export default function Profile() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [passwordChangeMode, setPasswordChangeMode] = useState(false);
+
+  // Get API URL from environment
+  const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
 
   useEffect(() => {
     // Load user data
@@ -38,6 +47,18 @@ export default function Profile() {
         confirmPassword: "",
       });
 
+      // Load avatar if exists
+      if (userData.avatar) {
+        // If it's an object with id, use that to construct URL
+        if (typeof userData.avatar === "object" && userData.avatar.id) {
+          setAvatarPreview(`${API_URL}/assets/${userData.avatar.id}`);
+        }
+        // If it's a string (direct ID), use that
+        else if (typeof userData.avatar === "string") {
+          setAvatarPreview(`${API_URL}/assets/${userData.avatar}`);
+        }
+      }
+
       // Check if user has connected Ethereum address
       if (userData.ethereum_address) {
         setEthereumAddress(userData.ethereum_address);
@@ -52,6 +73,32 @@ export default function Profile() {
       ...formData,
       [name]: value,
     });
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file
+      if (!file.type.startsWith("image/")) {
+        setError("Please select an image file");
+        return;
+      }
+
+      // Maximum file size: 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        setError("Image size should be less than 2MB");
+        return;
+      }
+
+      setAvatarFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,11 +123,30 @@ export default function Profile() {
         }
       }
 
+      // First handle avatar upload if there's a new file
+      let avatarId = null;
+      if (avatarFile) {
+        setIsUploading(true);
+        try {
+          avatarId = await authService.uploadAvatar(avatarFile);
+        } catch (uploadError) {
+          console.error("Avatar upload failed:", uploadError);
+          throw new Error("Failed to upload avatar. Please try again.");
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       // Prepare data for update
       const updateData: any = {
         first_name: formData.firstName,
         last_name: formData.lastName,
       };
+
+      // Add avatar if uploaded
+      if (avatarId) {
+        updateData.avatar = avatarId;
+      }
 
       // Add password change if needed
       if (passwordChangeMode && formData.newPassword) {
@@ -105,6 +171,18 @@ export default function Profile() {
         confirmPassword: "",
       });
 
+      // Refresh avatar if needed
+      if (updatedUser.avatar) {
+        // If it's an object with id, use that to construct URL
+        if (typeof updatedUser.avatar === "object" && updatedUser.avatar.id) {
+          setAvatarPreview(`${API_URL}/assets/${updatedUser.avatar.id}`);
+        }
+        // If it's a string (direct ID), use that
+        else if (typeof updatedUser.avatar === "string") {
+          setAvatarPreview(`${API_URL}/assets/${updatedUser.avatar}`);
+        }
+      }
+
       setSuccess("Profile updated successfully!");
 
       // Reset password fields
@@ -117,6 +195,20 @@ export default function Profile() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview("");
+
+    // Clear the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const connectMetamask = async () => {
@@ -255,6 +347,96 @@ export default function Profile() {
 
         <div className="p-4">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center sm:flex-row sm:items-start gap-4">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Avatar preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
+                      <svg
+                        className="h-12 w-12"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+
+                  {/* Loading overlay for upload */}
+                  {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-full">
+                      <svg
+                        className="animate-spin h-8 w-8 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+              </div>
+
+              <div className="flex flex-col space-y-3">
+                <button
+                  type="button"
+                  onClick={triggerFileInput}
+                  disabled={isUploading}
+                  className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {avatarPreview ? "Change Photo" : "Upload Photo"}
+                </button>
+
+                {avatarPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploading}
+                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-red-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                  >
+                    Remove Photo
+                  </button>
+                )}
+
+                <p className="text-xs text-gray-500">
+                  JPG, PNG or GIF. 2MB max.
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label
@@ -395,13 +577,14 @@ export default function Profile() {
               </div>
             )}
 
+            {/* Save button */}
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isUploading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                {loading ? (
+                {loading || isUploading ? (
                   <span className="flex items-center">
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"

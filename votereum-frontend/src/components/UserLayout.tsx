@@ -17,6 +17,8 @@ export default function UserLayout({
   const [user, setUser] = useState<any>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
+
   useEffect(() => {
     // Get user data when component mounts
     const userData = authService.getCurrentUser();
@@ -132,8 +134,22 @@ export default function UserLayout({
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
               <div className="relative ml-3">
                 <div className="flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                    {user.first_name ? user.first_name[0] : "U"}
+                  <div className="h-8 w-8 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white">
+                    {user.avatar ? (
+                      <img
+                        src={
+                          typeof user.avatar === "object" && user.avatar.id
+                            ? `${API_URL}/assets/${user.avatar.id}`
+                            : typeof user.avatar === "string"
+                              ? `${API_URL}/assets/${user.avatar}`
+                              : "#"
+                        }
+                        alt={`${user.first_name}'s avatar`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span>{user.first_name ? user.first_name[0] : "U"}</span>
+                    )}
                   </div>
                   <span className="text-sm text-gray-700 ml-2 mr-2">
                     {user.first_name} {user.last_name}
@@ -284,8 +300,22 @@ export default function UserLayout({
             </Link>
             <div className="border-t border-gray-200 pt-3">
               <div className="pl-3 pr-4 py-2 flex items-center">
-                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white mr-2">
-                  {user.first_name ? user.first_name[0] : "U"}
+                <div className="h-8 w-8 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center text-white mr-2">
+                  {user.avatar ? (
+                    <img
+                      src={
+                        typeof user.avatar === "object" && user.avatar.id
+                          ? `${API_URL}/assets/${user.avatar.id}`
+                          : typeof user.avatar === "string"
+                            ? `${API_URL}/assets/${user.avatar}`
+                            : "#"
+                      }
+                      alt={`${user.first_name}'s avatar`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span>{user.first_name ? user.first_name[0] : "U"}</span>
+                  )}
                 </div>
                 <div>
                   <div className="text-base font-medium text-gray-800">

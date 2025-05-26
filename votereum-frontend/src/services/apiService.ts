@@ -160,10 +160,10 @@ export const authService = {
     last_name?: string;
     password?: string;
     current_password?: string;
+    avatar?: string;
   }) => {
     try {
       // Use /users/me endpoint instead of /users/{id}
-      // This is more secure and avoids permission issues
       const response = await api.patch("/users/me", userData);
 
       // Get the current user data
@@ -175,6 +175,8 @@ export const authService = {
         ...currentUser,
         first_name: userData.first_name || currentUser.first_name,
         last_name: userData.last_name || currentUser.last_name,
+        // Include avatar if present
+        avatar: userData.avatar ? userData.avatar : currentUser.avatar,
       };
 
       localStorage.setItem("userData", JSON.stringify(updatedUser));
@@ -241,6 +243,30 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error("Error disconnecting MetaMask:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Upload an avatar image to Directus
+   */
+  uploadAvatar: async (file: File): Promise<string> => {
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Upload the file to Directus Files
+      const response = await api.post("/files", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Return the file ID
+      return response.data.data.id;
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
       throw error;
     }
   },
