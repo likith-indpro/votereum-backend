@@ -11,7 +11,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-md">
         <div className="p-4 border-b">
-          <h2 className="font-bold text-xl text-primary">Votereum Admin</h2>
+          <h2 className="font-bold text-xl text-blue-600">Votereum Admin</h2>
         </div>
         <nav className="p-4">
           <ul className="space-y-2">

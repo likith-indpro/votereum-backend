@@ -1,16 +1,17 @@
 import { createBrowserRouter } from "react-router-dom";
 import AdminDashboard from "../pages/admin/Dashboard";
+import Home from "../pages/user/Home";
 
-// Will add more routes as we build more pages
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <div>Home Page - Coming Soon</div>,
+    element: <Home />,
   },
   {
     path: "/admin",
     element: <AdminDashboard />,
   },
+  // Other routes will be added as we create more pages
 ]);
 
 export default router;
