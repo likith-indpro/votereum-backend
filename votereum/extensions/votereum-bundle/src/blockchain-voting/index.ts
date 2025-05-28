@@ -232,7 +232,34 @@ export default defineEndpoint((router, { services, getSchema }) => {
         start_time: new Date(startTime),
         end_time: new Date(endTime),
       });
-      // Add after the createOne call
+
+      // IMPORTANT: Make sure we have the election ID
+      if (!election || !election.id) {
+        console.error("Warning: Created election has no ID", election);
+        // Try to fetch the just-created election
+        try {
+          const createdElections = await electionsService.readByQuery({
+            filter: {
+              blockchain_address: {
+                _eq: electionAddress,
+              },
+            },
+            limit: 1,
+          });
+
+          if (createdElections && createdElections.length > 0) {
+            console.log(
+              "Retrieved election ID from database:",
+              createdElections[0].id
+            );
+            election.id = createdElections[0].id;
+          }
+        } catch (err) {
+          console.error("Failed to retrieve election ID:", err);
+        }
+      }
+
+      // Log the created election with ID
       console.log("Election created with data:", {
         id: election.id,
         name: title,
@@ -241,16 +268,6 @@ export default defineEndpoint((router, { services, getSchema }) => {
         end_time: new Date(endTime),
       });
 
-      // Add to the getResults endpoint (around line 250)
-      console.log("Fetching results for election:", {
-        id: req.params.id,
-        address: election.blockchain_address,
-        found: !!election.blockchain_address,
-      });
-
-      // Log the created election
-      console.log("Created election in Directus:", election);
-
       // Add candidates to the election on blockchain and in Directus
       await addCandidatesToElection(
         electionAddress,
@@ -258,7 +275,7 @@ export default defineEndpoint((router, { services, getSchema }) => {
         wallet,
         req,
         schema,
-        election.id
+        election.id // Make sure this is passed correctly
       );
 
       res.json({
@@ -643,6 +660,10 @@ export default defineEndpoint((router, { services, getSchema }) => {
     }
   }
 
+  // Fix the addCandidatesToElection function
+
+  // Replace the addCandidatesToElection function with this improved version:
+
   async function addCandidatesToElection(
     electionAddress,
     candidatesList,
@@ -665,28 +686,127 @@ export default defineEndpoint((router, { services, getSchema }) => {
       accountability: req.accountability,
     });
 
-    for (const candidate of candidatesList) {
+    console.log(
+      `Adding ${candidatesList.length} candidates to election ${electionId || "(undefined id)"}`
+    );
+
+    // Make sure we have a valid election ID
+    if (!electionId) {
+      console.error(
+        "Election ID is undefined! Attempting to fetch it from database using contract address."
+      );
       try {
-        // Add candidate to blockchain
+        // Try to find the election by blockchain address
+        const electionsService = new ItemsService("elections", {
+          schema,
+          accountability: req.accountability,
+        });
+
+        const elections = await electionsService.readByQuery({
+          filter: {
+            blockchain_address: {
+              _eq: electionAddress,
+            },
+          },
+          limit: 1,
+        });
+
+        if (elections && elections.length > 0) {
+          electionId = elections[0].id;
+          console.log(
+            `Found election ID ${electionId} for contract ${electionAddress}`
+          );
+        } else {
+          throw new Error(
+            "Could not find election with address " + electionAddress
+          );
+        }
+      } catch (error) {
+        console.error("Failed to resolve election ID:", error);
+        throw new Error("Cannot add candidates: Election ID is undefined");
+      }
+    }
+
+    // Add candidates with sequential transactions
+    for (let i = 0; i < candidatesList.length; i++) {
+      const candidate = candidatesList[i];
+      console.log(
+        `Processing candidate ${i + 1}/${candidatesList.length}: ${candidate.name}`
+      );
+
+      try {
+        // Add candidate to blockchain with proper nonce management
+        console.log(`Adding candidate ${candidate.name} to blockchain...`);
+
+        // Get current nonce before each transaction to avoid nonce errors
+        const currentNonce = await provider.getTransactionCount(
+          wallet.address,
+          "pending"
+        );
+        console.log(
+          `Using nonce ${currentNonce} for candidate ${candidate.name}`
+        );
+
+        // Create and send transaction with explicit nonce
         const tx = await electionContract.addCandidate(
           candidate.name,
-          candidate.description || ""
+          candidate.description || "",
+          { nonce: currentNonce }
         );
-        await tx.wait();
 
-        // Add candidate to Directus
-        await candidatesService.createOne({
+        console.log(`Transaction sent with hash ${tx.hash}`);
+        const receipt = await tx.wait();
+        console.log(
+          `Added candidate ${candidate.name} to blockchain (block: ${receipt.blockNumber})`
+        );
+
+        // Create candidate in Directus database
+        const directusCandidate = {
           name: candidate.name,
           description: candidate.description || "",
-          election: electionId,
+          election: electionId, // Now properly set
           img: candidate.img || null,
           email: candidate.email || null,
+        };
+
+        console.log(`Creating Directus candidate with data:`, {
+          ...directusCandidate,
+          election: electionId, // Log the ID to confirm it's present
         });
+
+        try {
+          // Add candidate to Directus with explicit election ID
+          const createdCandidate =
+            await candidatesService.createOne(directusCandidate);
+          console.log(
+            `Created Directus candidate with ID: ${createdCandidate?.id || "undefined"}`
+          );
+        } catch (dbError) {
+          console.error(
+            `Database error creating candidate ${candidate.name}:`,
+            dbError
+          );
+          // Continue with other candidates even if database insertion fails
+        }
+
+        // Add a small delay between transactions to ensure proper nonce sequencing
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error) {
         console.error(`Error adding candidate "${candidate.name}":`, error);
+
+        // If it's a nonce error, wait a bit and try to continue with next candidate
+        if (
+          error.code === "NONCE_EXPIRED" ||
+          error.message?.includes("nonce")
+        ) {
+          console.log("Nonce issue detected, waiting before continuing...");
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
         // Continue with other candidates even if one fails
       }
     }
+
+    console.log(`Finished processing ${candidatesList.length} candidates`);
   }
 
   function verifySignature(address, signature, message) {

@@ -61,8 +61,11 @@ contract Election {
         _;
     }
 
+    // Around line 67
+    
     function addCandidate(string memory _name, string memory _information) public onlyOrganizer {
-        require(block.timestamp < startTime, "Cannot add candidate after election has started");
+        // Comment out this line for demo purposes
+        // require(block.timestamp < startTime, "Cannot add candidate after election has started");
         
         candidatesCount++;
         candidates[candidatesCount] = Candidate({
