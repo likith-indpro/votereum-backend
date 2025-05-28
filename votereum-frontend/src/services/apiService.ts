@@ -12,16 +12,119 @@ const api = axios.create({
   withCredentials: true, // Important for cookies handling
 });
 
-// Add a response interceptor to handle errors
+// Refresh token logic
+let isRefreshing = false;
+let failedQueue: { resolve: Function; reject: Function }[] = [];
+
+const processQueue = (error: Error | null, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+// Add a request interceptor
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add a response interceptor to handle errors and token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    console.error("API Error Details:", error.response?.data);
-    // Handle Directus error responses
-    const errorMessage =
-      error.response?.data?.errors?.[0]?.message ||
-      "An unexpected error occurred";
-    return Promise.reject(new Error(errorMessage));
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is not 401 or request already was retried, reject
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      const errorMessage =
+        error.response?.data?.errors?.[0]?.message ||
+        "An unexpected error occurred";
+      return Promise.reject(new Error(errorMessage));
+    }
+
+    // Mark this request as retried already
+    originalRequest._retry = true;
+
+    // If we're already refreshing, add this request to the queue
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          return api(originalRequest);
+        })
+        .catch((err) => {
+          return Promise.reject(err);
+        });
+    }
+
+    isRefreshing = true;
+
+    // Try to refresh the token
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) {
+        // No refresh token available, do a full logout
+        authService.logout();
+        throw new Error("Authentication expired. Please log in again.");
+      }
+
+      // Request new tokens
+      const response = await axios.post(
+        `${API_URL}/auth/refresh`,
+        {
+          refresh_token: refreshToken,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+
+      // Get new tokens
+      const { access_token, refresh_token } = response.data.data;
+
+      // Store the new tokens
+      localStorage.setItem("authToken", access_token);
+      localStorage.setItem("refreshToken", refresh_token);
+
+      // Update the auth header
+      setAuthToken(access_token);
+
+      // Update cookie with new refresh token
+      document.cookie = `directus_refresh_token=${refresh_token}; path=/; max-age=604800`; // 7 days
+
+      // Process the queue with the new token
+      processQueue(null, access_token);
+
+      // Return the original request with the new token
+      originalRequest.headers["Authorization"] = `Bearer ${access_token}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      // Refresh failed, clear auth state
+      processQueue(refreshError as Error);
+
+      // Clear auth state and redirect to login
+      authService.logout();
+
+      return Promise.reject(
+        new Error("Authentication expired. Please log in again.")
+      );
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 
@@ -477,4 +580,4 @@ const requestSignatureFromUser = async (message: string): Promise<string> => {
   }
 };
 
-export default api;
+export default { authService };

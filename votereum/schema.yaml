@@ -98,6 +98,30 @@ collections:
       versioning: false
     schema:
       name: voters
+  - collection: voters_ca
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      collapse: open
+      collection: voters_ca
+      color: null
+      display_template: null
+      group: null
+      hidden: true
+      icon: import_export
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: voters_ca
 fields:
   - collection: candidates
     field: id
@@ -1217,6 +1241,162 @@ fields:
       has_auto_increment: false
       foreign_key_table: null
       foreign_key_column: null
+  - collection: elections
+    field: start_date
+    type: dateTime
+    meta:
+      collection: elections
+      conditions: null
+      display: null
+      display_options: null
+      field: start_date
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 10
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: start_date
+      table: elections
+      data_type: timestamp without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: elections
+    field: start_time
+    type: dateTime
+    meta:
+      collection: elections
+      conditions: null
+      display: null
+      display_options: null
+      field: start_time
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: start_time
+      table: elections
+      data_type: timestamp without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: elections
+    field: end_time
+    type: dateTime
+    meta:
+      collection: elections
+      conditions: null
+      display: null
+      display_options: null
+      field: end_time
+      group: null
+      hidden: false
+      interface: datetime
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 12
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: end_time
+      table: elections
+      data_type: timestamp without time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: elections
+    field: blockchain_address
+    type: string
+    meta:
+      collection: elections
+      conditions: null
+      display: null
+      display_options: null
+      field: blockchain_address
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 13
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: blockchain_address
+      table: elections
+      data_type: character varying
+      default_value: null
+      max_length: 255
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
   - collection: voters
     field: id
     type: uuid
@@ -1460,19 +1640,21 @@ fields:
       foreign_key_table: null
       foreign_key_column: null
   - collection: voters
-    field: selected_candidate
+    field: selected_candidates
     type: uuid
     meta:
       collection: voters
       conditions: null
       display: null
       display_options: null
-      field: selected_candidate
+      field: selected_candidates
       group: null
       hidden: false
       interface: select-dropdown-m2o
       note: null
-      options: null
+      options:
+        sort: null
+        template: '{{name}}'
       readonly: false
       required: false
       sort: 7
@@ -1483,7 +1665,7 @@ fields:
       validation_message: null
       width: full
     schema:
-      name: selected_candidate
+      name: selected_candidates
       table: voters
       data_type: uuid
       default_value: null
@@ -1497,8 +1679,125 @@ fields:
       is_generated: false
       generation_expression: null
       has_auto_increment: false
-      foreign_key_table: directus_users
+      foreign_key_table: candidates
       foreign_key_column: id
+  - collection: voters_ca
+    field: id
+    type: integer
+    meta:
+      collection: voters_ca
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 1
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: voters_ca
+      data_type: integer
+      default_value: nextval('voters_ca_id_seq'::regclass)
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: true
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: voters_ca
+    field: voters_id
+    type: uuid
+    meta:
+      collection: voters_ca
+      conditions: null
+      display: null
+      display_options: null
+      field: voters_id
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: voters_id
+      table: voters_ca
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: voters_ca
+    field: ca_id
+    type: integer
+    meta:
+      collection: voters_ca
+      conditions: null
+      display: null
+      display_options: null
+      field: ca_id
+      group: null
+      hidden: true
+      interface: null
+      note: null
+      options: null
+      readonly: false
+      required: false
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: ca_id
+      table: voters_ca
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
 relations:
   - collection: candidates
     field: election
@@ -1627,23 +1926,23 @@ relations:
       on_update: NO ACTION
       on_delete: SET NULL
   - collection: voters
-    field: selected_candidate
-    related_collection: directus_users
+    field: selected_candidates
+    related_collection: candidates
     meta:
-      junction_field: null
+      junction_field: voters_id
       many_collection: voters
-      many_field: selected_candidate
+      many_field: selected_candidates
       one_allowed_collections: null
-      one_collection: directus_users
+      one_collection: candidates
       one_collection_field: null
       one_deselect_action: nullify
       one_field: null
       sort_field: null
     schema:
       table: voters
-      column: selected_candidate
-      foreign_key_table: directus_users
+      column: selected_candidates
+      foreign_key_table: candidates
       foreign_key_column: id
-      constraint_name: voters_selected_candidate_foreign
+      constraint_name: voters_selected_candidates_foreign
       on_update: NO ACTION
       on_delete: SET NULL
