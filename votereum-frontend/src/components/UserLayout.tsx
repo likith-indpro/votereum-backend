@@ -75,13 +75,12 @@ export default function UserLayout({
                 </Link>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                {/* Desktop menu links */}
                 <Link
                   to="/dashboard"
                   className={`${
                     isActive("/dashboard") &&
                     !isActive("/dashboard/elections") &&
-                    !isActive("/dashboard/vote") &&
-                    !isActive("/dashboard/results") &&
                     !isActive("/dashboard/profile")
                       ? "border-blue-500 text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -92,32 +91,14 @@ export default function UserLayout({
                 <Link
                   to="/dashboard/elections"
                   className={`${
-                    isActive("/dashboard/elections")
-                      ? "border-blue-500 text-gray-900"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
-                >
-                  Elections
-                </Link>
-                <Link
-                  to="/dashboard/vote" // Updated to point to a vote list page
-                  className={`${
-                    isActive("/dashboard/vote")
-                      ? "border-blue-500 text-gray-900"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
-                >
-                  Vote
-                </Link>
-                <Link
-                  to="/dashboard/results" // Updated to point to a results list page
-                  className={`${
+                    isActive("/dashboard/elections") ||
+                    isActive("/dashboard/vote") ||
                     isActive("/dashboard/results")
                       ? "border-blue-500 text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
                 >
-                  Results
+                  Elections
                 </Link>
                 <Link
                   to="/dashboard/profile"
@@ -239,6 +220,7 @@ export default function UserLayout({
         {/* Mobile menu */}
         <div className={`${mobileMenuOpen ? "block" : "hidden"} sm:hidden`}>
           <div className="pt-2 pb-3 space-y-1">
+            {/* Mobile menu links */}
             <Link
               to="/dashboard"
               className={`${
@@ -257,35 +239,15 @@ export default function UserLayout({
             <Link
               to="/dashboard/elections"
               className={`${
-                isActive("/dashboard/elections")
-                  ? "bg-blue-50 border-blue-500 text-blue-700"
-                  : "border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
-              } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Elections
-            </Link>
-            <Link
-              to="/dashboard/vote" // Updated to point to a vote list page
-              className={`${
-                isActive("/dashboard/vote")
-                  ? "bg-blue-50 border-blue-500 text-blue-700"
-                  : "border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
-              } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Vote
-            </Link>
-            <Link
-              to="/dashboard/results" // Updated to point to a results list page
-              className={`${
+                isActive("/dashboard/elections") ||
+                isActive("/dashboard/vote") ||
                 isActive("/dashboard/results")
                   ? "bg-blue-50 border-blue-500 text-blue-700"
                   : "border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800"
               } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Results
+              Elections
             </Link>
             <Link
               to="/dashboard/profile"

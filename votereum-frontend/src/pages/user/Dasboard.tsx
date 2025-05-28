@@ -9,6 +9,80 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [votingHistory, setVotingHistory] = useState([]);
+
+  // Add this function to the existing useEffect
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch elections
+        const electionData = await electionService.getElections();
+        console.log("Fetched elections:", electionData);
+        setElections(electionData);
+
+        // Check eligibility and build voting history
+        const eligibilityData = {};
+        const historyItems = [];
+
+        for (const election of electionData) {
+          try {
+            const eligibility = await electionService.checkEligibility(
+              election.id
+            );
+            console.log(
+              `Eligibility for election ${election.id}:`,
+              eligibility
+            );
+            eligibilityData[election.id] = eligibility;
+
+            // If user has voted in this election, add to voting history
+            if (eligibility.voted) {
+              // Try to get the voted candidate info
+              try {
+                const candidatesData = await electionService.getCandidates(
+                  election.id
+                );
+                const results = await electionService.getResults(election.id);
+
+                // Find the candidate they voted for
+                // Since we don't store who they voted for, we just show the election and date
+                historyItems.push({
+                  id: election.id,
+                  electionName: election.name,
+                  date: new Date(), // We don't have the actual vote timestamp
+                  status: "Completed",
+                });
+              } catch (err) {
+                console.error(
+                  `Error getting candidates for election ${election.id}:`,
+                  err
+                );
+              }
+            }
+          } catch (err) {
+            console.error(
+              `Error checking eligibility for election ${election.id}:`,
+              err
+            );
+            eligibilityData[election.id] = { eligible: false, voted: false };
+          }
+        }
+
+        setVotingHistory(historyItems);
+        setUserEligibility(eligibilityData);
+      } catch (err) {
+        setError("Failed to load elections");
+        console.error("Error fetching elections:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   useEffect(() => {
     const fetchElections = async () => {
       try {
@@ -164,98 +238,89 @@ export default function UserDashboard() {
           </div>
         ) : error ? (
           <div className="p-6 text-center text-red-600">{error}</div>
-        ) : elections.length === 0 ? (
-          <div className="p-6 text-center">
-            <p>No elections are currently available for you.</p>
-          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-            {elections.map((election) => {
-              // Debug election data
-              showRawData(election);
+            {elections.length === 0 ? (
+              <div className="col-span-2 text-center p-10">
+                <p className="text-gray-500">
+                  No elections are currently available.
+                </p>
+              </div>
+            ) : (
+              elections.map((election) => {
+                const statusInfo = getElectionStatus(election);
+                const eligibility = userEligibility[election.id] || {
+                  eligible: true,
+                  voted: false,
+                };
 
-              const statusInfo = getElectionStatus(election);
-              // Default to eligible for now (fix this when API is ready)
-              const eligibility = userEligibility[election.id] || {
-                eligible: true,
-                voted: false,
-              };
-
-              return (
-                <div
-                  key={election.id}
-                  className="border border-gray-200 rounded-lg p-4 shadow-sm"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-semibold">{election.name}</h4>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {statusInfo.text}
-                      </p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        statusInfo.status === "open"
-                          ? "bg-green-100 text-green-800"
+                return (
+                  <div
+                    key={election.id}
+                    className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-lg font-semibold">
+                          {election.name}
+                        </h4>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {statusInfo.text}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          statusInfo.status === "open"
+                            ? "bg-green-100 text-green-800"
+                            : statusInfo.status === "upcoming"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {statusInfo.status === "open"
+                          ? "Open"
                           : statusInfo.status === "upcoming"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {statusInfo.status === "open"
-                        ? "Open"
-                        : statusInfo.status === "upcoming"
-                          ? "Upcoming"
-                          : "Closed"}
-                    </span>
-                  </div>
+                            ? "Upcoming"
+                            : "Closed"}
+                      </span>
+                    </div>
 
-                  <p className="mt-3 text-sm text-gray-600">
-                    {election.description}
-                  </p>
+                    <p className="mt-3 text-sm text-gray-600 line-clamp-2">
+                      {election.description}
+                    </p>
 
-                  <div className="mt-4">
-                    {statusInfo.status === "open" &&
-                      eligibility.eligible &&
-                      !eligibility.voted && (
+                    <div className="mt-4 flex space-x-2">
+                      {statusInfo.status === "open" &&
+                        eligibility.eligible &&
+                        !eligibility.voted && (
+                          <Link
+                            to={`/dashboard/vote/${election.id}`}
+                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            Vote Now
+                          </Link>
+                        )}
+
+                      {(eligibility.voted ||
+                        statusInfo.status === "closed") && (
                         <Link
-                          to={`/dashboard/vote/${election.id}`}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          to={`/dashboard/results/${election.id}`}
+                          className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                         >
-                          Vote Now
+                          View Results
                         </Link>
                       )}
 
-                    {eligibility.voted && (
-                      <Link
-                        to={`/dashboard/results/${election.id}`}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                      >
-                        View Results
-                      </Link>
-                    )}
-
-                    {statusInfo.status === "upcoming" && (
-                      <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white">
-                        Coming Soon
-                      </span>
-                    )}
-
-                    {!eligibility.eligible && statusInfo.status === "open" && (
-                      <div>
-                        <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-500 bg-gray-50">
-                          Not Eligible
+                      {statusInfo.status === "upcoming" && (
+                        <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white">
+                          Coming Soon
                         </span>
-                        <p className="mt-2 text-xs text-gray-500">
-                          Contact an administrator if you believe this is
-                          incorrect.
-                        </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         )}
 
@@ -297,46 +362,36 @@ export default function UserDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {elections
-                        .filter(
-                          (election) => userEligibility[election.id]?.voted
-                        )
-                        .map((election) => (
-                          <tr key={election.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {election.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {formatDate(
-                                election.end_time || election.endTime
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                Voted
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <Link
-                                to={`/dashboard/results/${election.id}`}
-                                className="text-blue-600 hover:text-blue-900"
-                              >
-                                View Results
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      {elections.filter(
-                        (election) => userEligibility[election.id]?.voted
-                      ).length === 0 && (
+                      {votingHistory.length === 0 ? (
                         <tr>
                           <td
                             colSpan={4}
-                            className="px-6 py-4 text-center text-sm text-gray-500"
+                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"
                           >
                             You haven't voted in any elections yet.
                           </td>
                         </tr>
+                      ) : (
+                        votingHistory.map((historyItem) => (
+                          <tr key={historyItem.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {historyItem.electionName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(historyItem.date).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                {historyItem.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                              <Link to={`/dashboard/results/${historyItem.id}`}>
+                                View Results
+                              </Link>
+                            </td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>

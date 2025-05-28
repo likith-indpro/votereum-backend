@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import UserLayout from "../../components/UserLayout";
-import { electionService, authService } from "../../services/apiService";
+import { electionService } from "../../services/apiService";
 
 export default function Results() {
   const [election, setElection] = useState(null);
@@ -9,20 +9,39 @@ export default function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
 
   useEffect(() => {
     const fetchResults = async () => {
-      if (!id) return;
+      if (!id) {
+        // No election ID provided, redirect to elections list
+        navigate("/dashboard/elections");
+        return;
+      }
 
       try {
-        // Get election details
+        setLoading(true);
+        setError("");
+
+        console.log("Fetching results for election:", { id });
+
+        // Get election details first
         const electionData = await electionService.getElection(id);
+        console.log("Election data:", electionData);
+
+        if (!electionData) {
+          setError("Election not found");
+          setLoading(false);
+          return;
+        }
+
         setElection(electionData);
 
         // Get results from blockchain
         const resultsData = await electionService.getResults(id);
+        console.log("Results data:", resultsData);
 
         // Sort by vote count (descending)
         const sortedResults = [...resultsData].sort(
@@ -39,7 +58,7 @@ export default function Results() {
     };
 
     fetchResults();
-  }, [id]);
+  }, [id, navigate]);
 
   // Calculate total votes
   const totalVotes = results.reduce(
@@ -85,6 +104,25 @@ export default function Results() {
     );
   }
 
+  if (!election) {
+    return (
+      <UserLayout title="Election Results">
+        <div className="bg-white shadow sm:rounded-lg p-6">
+          <p>Election not found or no longer available.</p>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/elections")}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+            >
+              View All Elections
+            </button>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
   return (
     <UserLayout
       title={election?.name ? `Results: ${election.name}` : "Election Results"}
@@ -121,10 +159,10 @@ export default function Results() {
             <p className="mt-1 text-sm text-gray-500">{error}</p>
             <div className="mt-6">
               <Link
-                to="/dashboard"
+                to="/dashboard/elections"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Return to Dashboard
+                Return to Elections
               </Link>
             </div>
           </div>
@@ -199,6 +237,15 @@ export default function Results() {
                   })}
                 </div>
               )}
+
+              <div className="mt-6 flex justify-center">
+                <Link
+                  to="/dashboard/elections"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Back to Elections
+                </Link>
+              </div>
             </div>
 
             <div className="px-4 py-4 sm:px-6 bg-gray-50 border-t border-gray-200">
