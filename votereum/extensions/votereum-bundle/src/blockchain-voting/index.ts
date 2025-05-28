@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { start } from "repl";
 
 // Load environment variables
 dotenv.config();
@@ -214,6 +215,23 @@ export default defineEndpoint((router, { services, getSchema }) => {
         status: false, // Not active yet
         company_meta: companyMetaId, // Now using proper UUID
         blockchain_address: electionAddress, // Store blockchain address in Directus
+        start_time: new Date(startTime),
+        end_time: new Date(endTime),
+      });
+      // Add after the createOne call
+      console.log("Election created with data:", {
+        id: election.id,
+        name: title,
+        blockchain_address: electionAddress,
+        start_time: new Date(startTime),
+        end_time: new Date(endTime),
+      });
+
+      // Add to the getResults endpoint (around line 250)
+      console.log("Fetching results for election:", {
+        id: req.params.id,
+        address: election.blockchain_address,
+        found: !!election.blockchain_address,
       });
 
       // Log the created election
@@ -299,29 +317,58 @@ export default defineEndpoint((router, { services, getSchema }) => {
       const { electionId, candidateId, voterAddress, signature, message } =
         req.body;
 
-      // Verify the signature to ensure the request is coming from the actual voter
+      console.log("Received vote request:", {
+        electionId,
+        candidateId,
+        voterAddress: voterAddress.toLowerCase(),
+        messageLength: message?.length || 0,
+      });
+
+      // Validate inputs
+      if (
+        !electionId ||
+        !candidateId ||
+        !voterAddress ||
+        !signature ||
+        !message
+      ) {
+        throw new Error("Missing required fields for voting");
+      }
+
+      // Signature verification is working correctly - no changes needed here
       const isValidSignature = verifySignature(
         voterAddress,
         signature,
         message
       );
-
       if (!isValidSignature) {
-        throw new Error("Invalid signature");
+        throw new Error(
+          `Invalid signature. Expected signer: ${voterAddress.toLowerCase()}`
+        );
       }
 
-      // Create ItemsService for elections
+      // Create ItemsService for elections and candidates
       const schema = await getSchema();
       const ItemsService = services.ItemsService;
       const electionsService = new ItemsService("elections", {
         schema,
         accountability: req.accountability,
       });
+      const candidatesService = new ItemsService("candidates", {
+        schema,
+        accountability: req.accountability,
+      });
 
+      // Get election from database
       const election = await electionsService.readOne(electionId);
-
       if (!election.blockchain_address) {
         throw new Error("Election has no blockchain address");
+      }
+
+      // Find the candidate in the database to get its blockchain ID
+      const candidate = await candidatesService.readOne(candidateId);
+      if (!candidate) {
+        throw new Error("Candidate not found");
       }
 
       // Connect to election contract
@@ -332,56 +379,98 @@ export default defineEndpoint((router, { services, getSchema }) => {
       );
 
       // Since this is a server endpoint, we need to use the admin wallet
-      // In a real scenario, the user would directly sign the transaction
       const wallet = new ethers.Wallet(
         process.env.ADMIN_PRIVATE_KEY || "",
         provider
       );
       const connectedContract = electionContract.connect(wallet);
 
-      // Check if user has already voted
-      const hasVoted = await connectedContract.hasVoted(voterAddress);
-      if (hasVoted) {
-        throw new Error("User has already voted");
+      // Get all candidates from blockchain to find the matching one
+      const candidatesCount = await connectedContract.candidatesCount();
+      console.log(`Found ${candidatesCount} candidates on blockchain`);
+
+      // Find candidate ID on blockchain by matching the name
+      let blockchainCandidateId = 0;
+      for (let i = 1; i <= candidatesCount; i++) {
+        const blockchainCandidate = await connectedContract.getCandidate(i);
+        console.log(`Candidate ${i}: ${blockchainCandidate[1]}`);
+
+        if (blockchainCandidate[1] === candidate.name) {
+          blockchainCandidateId = i;
+          console.log(
+            `Found matching candidate: ${candidate.name} with blockchain ID: ${blockchainCandidateId}`
+          );
+          break;
+        }
       }
 
-      // Vote on behalf of the user (this should be handled differently in production)
-      // Ideally, the user should sign and send the transaction directly
-      const tx = await connectedContract.vote(candidateId);
-      await tx.wait();
+      if (blockchainCandidateId === 0) {
+        throw new Error("Could not find matching candidate on blockchain");
+      }
 
-      // Record the vote in Directus
+      // Check if user has already voted
+      try {
+        const hasVoted = await connectedContract.hasVoted(voterAddress);
+        if (hasVoted) {
+          throw new Error("User has already voted in this election");
+        }
+      } catch (blockchainError) {
+        console.error("Error checking if user has voted:", blockchainError);
+        throw new Error(
+          `Blockchain error: ${blockchainError.message || "Unknown error checking vote status"}`
+        );
+      }
+
+      // Vote on behalf of the user - using the numeric blockchain ID
+      console.log(
+        `Casting vote for blockchain candidate ID ${blockchainCandidateId} (${candidate.name}) from voter ${voterAddress}`
+      );
+      const tx = await connectedContract.vote(blockchainCandidateId);
+      console.log("Vote transaction submitted:", tx.hash);
+      const receipt = await tx.wait();
+      console.log("Vote transaction confirmed in block:", receipt.blockNumber);
+
+      // Record the vote in Directus (no changes needed here)
       const votersService = new ItemsService("voters", {
         schema,
         accountability: req.accountability,
       });
 
       try {
-        await votersService.updateByQuery({
+        // Find the voter record
+        const voters = await votersService.readByQuery({
           filter: {
-            voter_user: {
-              ethereum_address: {
-                _eq: voterAddress,
+            _and: [
+              {
+                voter_user: {
+                  ethereum_address: { _eq: voterAddress.toLowerCase() },
+                },
               },
-            },
-            election: {
-              id: {
-                _eq: electionId,
-              },
-            },
-          },
-          data: {
-            voted: true,
-            selected_candidate: candidateId,
+              { election: { _eq: electionId } },
+            ],
           },
         });
+
+        if (voters && voters.length > 0) {
+          // Update the existing voter record
+          await votersService.updateOne(voters[0].id, {
+            voted: true,
+            selected_candidates: candidateId, // Note: match your actual field name
+          });
+          console.log(`Updated voter record ${voters[0].id}`);
+        } else {
+          console.warn("No matching voter record found to update");
+        }
       } catch (dbError) {
         console.error("Error updating voter record in Directus:", dbError);
         // Continue execution even if the database update fails
-        // The vote is already recorded on blockchain
       }
 
-      res.json({ success: true });
+      res.json({
+        success: true,
+        message: "Vote recorded successfully",
+        transaction: tx.hash,
+      });
     } catch (error) {
       console.error("Error voting:", error);
       next(
@@ -473,9 +562,24 @@ export default defineEndpoint((router, { services, getSchema }) => {
 
   function verifySignature(address, signature, message) {
     try {
-      // Updated for ethers v6
+      console.log("Verifying signature for:", {
+        address,
+        message,
+        signature: signature.slice(0, 20) + "...", // Don't log full signature for security
+      });
+
+      // Normalize addresses for comparison (ethers v6)
       const signerAddress = ethers.verifyMessage(message, signature);
-      return signerAddress.toLowerCase() === address.toLowerCase();
+      const normalizedInput = address.toLowerCase();
+      const normalizedSigner = signerAddress.toLowerCase();
+
+      console.log("Signature verification:", {
+        providedAddress: normalizedInput,
+        recoveredAddress: normalizedSigner,
+        match: normalizedSigner === normalizedInput,
+      });
+
+      return normalizedSigner === normalizedInput;
     } catch (error) {
       console.error("Signature verification error:", error);
       return false;
