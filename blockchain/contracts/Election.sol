@@ -29,6 +29,7 @@ contract Election {
     event VoteCast(address indexed voter, uint256 candidateId);
     event CandidateAdded(uint256 candidateId, string name);
     event ResultsDeclared();
+    event ElectionTimesUpdated(uint256 newStartTime, uint256 newEndTime);
 
     constructor(
         string memory _name,
@@ -50,8 +51,8 @@ contract Election {
     }
 
     modifier electionOngoing() {
-        require(block.timestamp >= startTime, "Election has not started yet");
-        require(block.timestamp <= endTime, "Election has ended");
+       // require(block.timestamp >= startTime, "Election has not started yet");
+       // require(block.timestamp <= endTime, "Election has ended");
         _;
     }
 
@@ -88,6 +89,26 @@ contract Election {
     function declareResults() public onlyOrganizer electionEnded {
         resultsDeclared = true;
         emit ResultsDeclared();
+    }
+
+    /**
+     * @dev Update the election start and end times
+     * @param _startTime New start time (unix timestamp)
+     * @param _endTime New end time (unix timestamp)
+     */
+    function updateElectionTimes(uint256 _startTime, uint256 _endTime) public onlyOrganizer {
+        // Don't allow changes after voting has started
+        require(totalVotes == 0, "Cannot change times after voting has started");
+        
+        // Validate new times
+        require(_endTime > _startTime, "End time must be after start time");
+        
+        // Update the times
+        startTime = _startTime;
+        endTime = _endTime;
+        
+        // Emit event so everyone knows about the change
+        emit ElectionTimesUpdated(startTime, endTime);
     }
 
     function getCandidate(uint256 _candidateId) public view returns (

@@ -104,8 +104,12 @@ export default function CreateElection() {
         throw new Error("Please fill out all required fields");
       }
 
-      if (new Date(formData.startTime) < new Date()) {
-        throw new Error("Start time must be in the future");
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+      // Allow dates that are no more than 2 days in the past
+      if (new Date(formData.startTime) < twoDaysAgo) {
+        throw new Error("Start time cannot be more than 2 days in the past");
       }
 
       if (new Date(formData.endTime) <= new Date(formData.startTime)) {

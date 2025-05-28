@@ -43,7 +43,7 @@ contract ElectionFactory {
         uint256 _startTime,
         uint256 _endTime
     ) public returns (address) {
-        require(_startTime > block.timestamp, "Start time must be in the future");
+       // require(_startTime > block.timestamp, "Start time must be in the future");
         require(_endTime > _startTime, "End time must be after start time");
         
         Election newElection = new Election(

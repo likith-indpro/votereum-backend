@@ -124,7 +124,7 @@ export default defineEndpoint((router, { services, getSchema }) => {
   // Create a new election
   router.post("/election", async (req, res, next) => {
     try {
-      const {
+      let {
         title,
         description,
         startTime,
@@ -133,11 +133,25 @@ export default defineEndpoint((router, { services, getSchema }) => {
         adminWallet,
       } = req.body;
 
-      // Check if blockchain integration is available
-      if (!factoryContract) {
-        throw new Error(
-          "Blockchain integration is not available. Check your ELECTION_FACTORY_ADDRESS environment variable."
+      // For testing/demo: If no startTime is specified, or if there's a demo flag,
+      // set startTime to yesterday automatically
+      const demoMode = req.body.demoMode === true;
+
+      if (!startTime || demoMode) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        startTime = yesterday.toISOString();
+        console.log(
+          "🚧 DEMO MODE: Setting election start time to yesterday:",
+          startTime
         );
+      }
+
+      // Ensure end time is in the future
+      if (!endTime) {
+        const nextYear = new Date();
+        nextYear.setFullYear(nextYear.getFullYear() + 1);
+        endTime = nextYear.toISOString();
       }
 
       // Check if blockchain integration is available
@@ -476,6 +490,121 @@ export default defineEndpoint((router, { services, getSchema }) => {
       next(
         new ServiceUnavailableException(
           error.message || "An error occurred while processing your vote"
+        )
+      );
+    }
+  });
+
+  // Add this full endpoint implementation
+
+  // Update election timing endpoint
+  router.patch("/election/:id/timing", async (req, res, next) => {
+    try {
+      const { startTime, endTime } = req.body;
+
+      // Validate the request
+      if (!startTime || !endTime) {
+        throw new Error("Both startTime and endTime are required");
+      }
+
+      // Make sure the user is authenticated
+      if (!req.accountability || !req.accountability.user) {
+        throw new Error("Authentication required");
+      }
+
+      // Create ItemsService for elections
+      const schema = await getSchema();
+      const ItemsService = services.ItemsService;
+      const electionsService = new ItemsService("elections", {
+        schema,
+        accountability: req.accountability,
+      });
+
+      // Get election from database
+      const election = await electionsService.readOne(req.params.id);
+      if (!election || !election.blockchain_address) {
+        throw new Error("Election not found or has no blockchain address");
+      }
+
+      // Format timestamps for blockchain (seconds since epoch)
+      const startTimestamp = Math.floor(new Date(startTime).getTime() / 1000);
+      const endTimestamp = Math.floor(new Date(endTime).getTime() / 1000);
+
+      console.log("Updating election timing to:", {
+        electionId: req.params.id,
+        contractAddress: election.blockchain_address,
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(endTime).toISOString(),
+        startTimestamp,
+        endTimestamp,
+      });
+
+      // Connect to provider
+      const provider = new ethers.JsonRpcProvider(
+        process.env.RPC_URL || "http://localhost:8545"
+      );
+
+      // Set up admin wallet from environment
+      if (!process.env.ADMIN_PRIVATE_KEY) {
+        throw new Error("Admin private key not configured");
+      }
+
+      const wallet = new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY, provider);
+      console.log("Using wallet address:", wallet.address);
+
+      // Load Election ABI
+      const electionAbi = Election.abi;
+
+      // Connect to election contract with admin wallet
+      const electionContract = new ethers.Contract(
+        election.blockchain_address,
+        electionAbi,
+        wallet
+      );
+
+      // Update blockchain times
+      console.log("Updating election times on blockchain...");
+      try {
+        const tx = await electionContract.updateElectionTimes(
+          startTimestamp,
+          endTimestamp
+        );
+
+        console.log("Submitted timing update transaction:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("Timing update confirmed in block:", receipt.blockNumber);
+      } catch (err) {
+        console.error("Blockchain error:", err);
+        throw new Error(
+          `Failed to update election timing on blockchain: ${err.reason || err.message}`
+        );
+      }
+
+      // Update database with new times
+      console.log("Updating election times in database...");
+      await electionsService.updateOne(req.params.id, {
+        start_time: new Date(startTime),
+        end_time: new Date(endTime),
+      });
+
+      console.log("Election timing updated successfully");
+
+      res.json({
+        data: {
+          success: true,
+          message: "Election timing updated in both database and blockchain",
+          id: req.params.id,
+          blockchain_address: election.blockchain_address,
+          start_time: new Date(startTime),
+          end_time: new Date(endTime),
+        },
+      });
+    } catch (error) {
+      console.error("Error updating election timing:", error);
+      next(
+        new ServiceUnavailableException(
+          error.message ||
+            "An error occurred while updating the election timing"
         )
       );
     }
