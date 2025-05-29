@@ -81,11 +81,24 @@ export default function Vote() {
 
     try {
       await electionService.vote(id, selectedCandidate);
-      // Redirect to results page on successful vote
+
+      // Show success and redirect
       navigate(`/dashboard/results/${id}`);
     } catch (err) {
       console.error("Error submitting vote:", err);
-      setError(err instanceof Error ? err.message : "Failed to submit vote");
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to submit vote";
+      setError(errorMessage);
+
+      // If error indicates user already voted, update eligibility state
+      if (errorMessage.toLowerCase().includes("already voted")) {
+        setEligibility((prev) => ({ ...prev, voted: true }));
+
+        // Redirect to results page after a short delay
+        setTimeout(() => {
+          navigate(`/dashboard/results/${id}`);
+        }, 2000);
+      }
     } finally {
       setSubmitting(false);
     }

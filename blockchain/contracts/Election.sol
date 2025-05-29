@@ -138,4 +138,21 @@ contract Election {
     function hasUserVoted(address _voter) public view returns (bool) {
         return hasVoted[_voter];
     }
+
+    /**
+     * @dev Vote on behalf of another user (only callable by election organizer)
+     * @param _candidateId The ID of the candidate to vote for
+     * @param _voter The address of the voter
+     */
+    function voteFor(uint256 _candidateId, address _voter) public electionOngoing {
+        require(msg.sender == organizer, "Only organizer can vote on behalf of others");
+        require(!hasVoted[_voter], "Voter has already voted");
+        require(_candidateId > 0 && _candidateId <= candidatesCount, "Invalid candidate ID");
+
+        hasVoted[_voter] = true;
+        candidates[_candidateId].voteCount++;
+        totalVotes++;
+
+        emit VoteCast(_voter, _candidateId);
+    }
 }

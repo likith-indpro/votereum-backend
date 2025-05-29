@@ -342,6 +342,8 @@ export default defineEndpoint((router, { services, getSchema }) => {
     }
   });
 
+  // Replace the vote section in the /vote endpoint
+
   // Vote endpoint
   router.post("/vote", async (req, res, next) => {
     try {
@@ -363,19 +365,23 @@ export default defineEndpoint((router, { services, getSchema }) => {
         !signature ||
         !message
       ) {
-        throw new Error("Missing required fields for voting");
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields for voting",
+        });
       }
 
-      // Signature verification is working correctly - no changes needed here
+      // Signature verification
       const isValidSignature = verifySignature(
         voterAddress,
         signature,
         message
       );
       if (!isValidSignature) {
-        throw new Error(
-          `Invalid signature. Expected signer: ${voterAddress.toLowerCase()}`
-        );
+        return res.status(400).json({
+          success: false,
+          message: `Invalid signature. Expected signer: ${voterAddress.toLowerCase()}`,
+        });
       }
 
       // Create ItemsService for elections and candidates
@@ -393,13 +399,19 @@ export default defineEndpoint((router, { services, getSchema }) => {
       // Get election from database
       const election = await electionsService.readOne(electionId);
       if (!election.blockchain_address) {
-        throw new Error("Election has no blockchain address");
+        return res.status(400).json({
+          success: false,
+          message: "Election has no blockchain address",
+        });
       }
 
       // Find the candidate in the database to get its blockchain ID
       const candidate = await candidatesService.readOne(candidateId);
       if (!candidate) {
-        throw new Error("Candidate not found");
+        return res.status(404).json({
+          success: false,
+          message: "Candidate not found",
+        });
       }
 
       // Connect to election contract
@@ -415,6 +427,37 @@ export default defineEndpoint((router, { services, getSchema }) => {
         provider
       );
       const connectedContract = electionContract.connect(wallet);
+
+      // IMPORTANT: Check if the VOTER has already voted
+      try {
+        // Check if the user has already voted using the hasUserVoted function
+        const hasVoted = await connectedContract.hasUserVoted(voterAddress);
+        console.log(`Checking if ${voterAddress} has voted: ${hasVoted}`);
+
+        if (hasVoted) {
+          return res.status(400).json({
+            success: false,
+            message: "You have already voted in this election.",
+            error: "ALREADY_VOTED",
+          });
+        }
+      } catch (checkError) {
+        console.error("Error checking if user has voted:", checkError);
+        // Let's try with the direct mapping if hasUserVoted fails
+        try {
+          const hasVoted = await electionContract.hasVoted(voterAddress);
+          if (hasVoted) {
+            return res.status(400).json({
+              success: false,
+              message: "You have already voted in this election.",
+              error: "ALREADY_VOTED",
+            });
+          }
+        } catch (mappingError) {
+          console.warn("Could not check if user already voted:", mappingError);
+          // Continue with the vote attempt anyway
+        }
+      }
 
       // Get all candidates from blockchain to find the matching one
       const candidatesCount = await connectedContract.candidatesCount();
@@ -436,82 +479,103 @@ export default defineEndpoint((router, { services, getSchema }) => {
       }
 
       if (blockchainCandidateId === 0) {
-        throw new Error("Could not find matching candidate on blockchain");
+        return res.status(400).json({
+          success: false,
+          message: "Could not find matching candidate on blockchain",
+        });
       }
 
-      // Check if user has already voted
-      try {
-        const hasVoted = await connectedContract.hasVoted(voterAddress);
-        if (hasVoted) {
-          throw new Error("User has already voted in this election");
-        }
-      } catch (blockchainError) {
-        console.error("Error checking if user has voted:", blockchainError);
-        throw new Error(
-          `Blockchain error: ${blockchainError.message || "Unknown error checking vote status"}`
-        );
-      }
-
-      // Vote on behalf of the user - using the numeric blockchain ID
+      // TEMPORARY WORKAROUND: Use the regular vote function since voteFor doesn't exist yet
+      // Note: Since we're using the admin wallet, this will mark the admin as having voted
       console.log(
         `Casting vote for blockchain candidate ID ${blockchainCandidateId} (${candidate.name}) from voter ${voterAddress}`
       );
-      const tx = await connectedContract.vote(blockchainCandidateId);
-      console.log("Vote transaction submitted:", tx.hash);
-      const receipt = await tx.wait();
-      console.log("Vote transaction confirmed in block:", receipt.blockNumber);
-
-      // Record the vote in Directus (no changes needed here)
-      const votersService = new ItemsService("voters", {
-        schema,
-        accountability: req.accountability,
-      });
 
       try {
-        // Find the voter record
-        const voters = await votersService.readByQuery({
-          filter: {
-            _and: [
-              {
-                voter_user: {
-                  ethereum_address: { _eq: voterAddress.toLowerCase() },
-                },
-              },
-              { election: { _eq: electionId } },
-            ],
-          },
+        // Use the standard vote function instead of voteFor
+        const tx = await connectedContract.voteFor(
+          blockchainCandidateId,
+          voterAddress
+        );
+        console.log("Vote transaction submitted:", tx.hash);
+        const receipt = await tx.wait();
+        console.log(
+          "Vote transaction confirmed in block:",
+          receipt.blockNumber
+        );
+
+        // Record the vote in Directus
+        const votersService = new ItemsService("voters", {
+          schema,
+          accountability: req.accountability,
         });
 
-        if (voters && voters.length > 0) {
-          // Update the existing voter record
-          await votersService.updateOne(voters[0].id, {
-            voted: true,
-            selected_candidates: candidateId, // Note: match your actual field name
+        try {
+          // Find the voter record
+          const voters = await votersService.readByQuery({
+            filter: {
+              _and: [
+                {
+                  voter_user: {
+                    ethereum_address: { _eq: voterAddress.toLowerCase() },
+                  },
+                },
+                { election: { _eq: electionId } },
+              ],
+            },
           });
-          console.log(`Updated voter record ${voters[0].id}`);
-        } else {
-          console.warn("No matching voter record found to update");
-        }
-      } catch (dbError) {
-        console.error("Error updating voter record in Directus:", dbError);
-        // Continue execution even if the database update fails
-      }
 
-      res.json({
-        success: true,
-        message: "Vote recorded successfully",
-        transaction: tx.hash,
-      });
+          if (voters && voters.length > 0) {
+            // Update the existing voter record
+            await votersService.updateOne(voters[0].id, {
+              voted: true,
+              selected_candidates: candidateId,
+            });
+            console.log(`Updated voter record ${voters[0].id}`);
+          } else {
+            console.warn("No matching voter record found to update");
+          }
+        } catch (dbError) {
+          console.error("Error updating voter record in Directus:", dbError);
+        }
+
+        return res.json({
+          success: true,
+          message: "Vote recorded successfully",
+          transaction: tx.hash,
+        });
+      } catch (voteError) {
+        console.error("Vote error details:", voteError);
+
+        // Check for "already voted" error messages
+        if (
+          voteError.message &&
+          (voteError.message.includes("already voted") ||
+            voteError.reason === "You have already voted")
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "You have already voted in this election.",
+            error: "ALREADY_VOTED",
+          });
+        }
+
+        // Handle generic errors with specific message from blockchain if available
+        return res.status(500).json({
+          success: false,
+          message:
+            voteError.reason || voteError.message || "Failed to record vote",
+          error: "VOTE_FAILED",
+        });
+      }
     } catch (error) {
-      console.error("Error voting:", error);
-      next(
-        new ServiceUnavailableException(
-          error.message || "An error occurred while processing your vote"
-        )
-      );
+      console.error("Error in vote endpoint:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "An unexpected error occurred",
+      });
     }
   });
-
   // Add this full endpoint implementation
 
   // Update election timing endpoint
