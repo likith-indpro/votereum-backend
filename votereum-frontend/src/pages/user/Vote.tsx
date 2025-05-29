@@ -19,11 +19,18 @@ export default function Vote() {
 
   const API_URL = import.meta.env.VITE_DIRECTUS_URL || "http://localhost:8055";
 
+  // Enhance the useEffect hook to check eligibility and handle already voted cases
   useEffect(() => {
     const fetchElectionData = async () => {
-      if (!id) return;
+      if (!id) {
+        navigate("/dashboard/elections");
+        return;
+      }
 
       try {
+        setLoading(true);
+        setError("");
+
         // Check if user is connected to MetaMask
         const userData = authService.getCurrentUser();
         if (!userData?.ethereum_address) {
@@ -35,26 +42,65 @@ export default function Vote() {
         }
 
         // Get election details
+        console.log(`Fetching election details for ID: ${id}`);
         const electionData = await electionService.getElection(id);
+
+        if (!electionData) {
+          setError("Election not found");
+          setLoading(false);
+          return;
+        }
+
         setElection(electionData);
 
-        // Get candidates
-        const candidatesData = await electionService.getCandidates(id);
-        setCandidates(candidatesData);
+        // Check eligibility - make sure this is fresh data from blockchain
+        console.log(`Checking eligibility for user in election ${id}`);
+        try {
+          const eligibilityData = await electionService.checkEligibility(id);
+          console.log("Eligibility data:", eligibilityData);
+          setEligibility(eligibilityData);
 
-        // Check eligibility
-        const eligibilityData = await electionService.checkEligibility(id);
-        setEligibility(eligibilityData);
+          // If already voted, show message and redirect to results
+          if (eligibilityData.voted) {
+            console.log("User has already voted, redirecting to results");
+            setError("You have already voted in this election");
 
-        // If already voted or not eligible, redirect
-        if (eligibilityData.voted) {
+            // Add a small delay before redirecting
+            setTimeout(() => {
+              navigate(`/dashboard/results/${id}`);
+            }, 1500);
+            return;
+          }
+
+          if (!eligibilityData.eligible) {
+            setError("You are not eligible to vote in this election");
+            return;
+          }
+        } catch (eligibilityError) {
+          console.error("Error checking eligibility:", eligibilityError);
+          setError(
+            "Could not verify your voting eligibility. Please try again."
+          );
+          return;
+        }
+
+        // Check if election is active
+        const now = new Date();
+        const startDate = new Date(electionData.start_time);
+        const endDate = new Date(electionData.end_time);
+
+        if (now < startDate) {
+          setError("This election has not started yet");
+          return;
+        } else if (now > endDate) {
+          setError("This election has ended");
           navigate(`/dashboard/results/${id}`);
           return;
         }
 
-        if (!eligibilityData.eligible) {
-          setError("You are not eligible to vote in this election");
-        }
+        // Now that we've confirmed eligibility, fetch candidates
+        const candidatesData = await electionService.getCandidates(id);
+        setCandidates(candidatesData);
       } catch (err) {
         console.error("Error loading election data:", err);
         setError("Failed to load election data. Please try again later.");
@@ -65,6 +111,43 @@ export default function Vote() {
 
     fetchElectionData();
   }, [id, navigate]);
+
+  // Add a refresh eligibility function we can call when needed
+  const refreshEligibility = async () => {
+    try {
+      if (!id) return;
+
+      const eligibilityData = await electionService.checkEligibility(id);
+      console.log("Updated eligibility data:", eligibilityData);
+
+      setEligibility(eligibilityData);
+
+      // Automatically redirect if they've already voted
+      if (eligibilityData.voted) {
+        setError("You have already voted in this election");
+        setTimeout(() => {
+          navigate(`/dashboard/results/${id}`);
+        }, 1500);
+      }
+
+      return eligibilityData;
+    } catch (err) {
+      console.error("Error refreshing eligibility:", err);
+      return null;
+    }
+  };
+
+  // Then call this function periodically or after key actions
+  // Add this effect to periodically check eligibility (every 10 seconds)
+  useEffect(() => {
+    if (!loading && election && id) {
+      const intervalId = setInterval(() => {
+        refreshEligibility();
+      }, 10000); // 10 seconds
+
+      return () => clearInterval(intervalId);
+    }
+  }, [id, loading, election]);
 
   const handleCandidateSelect = (candidateId) => {
     setSelectedCandidate(candidateId);
@@ -80,24 +163,44 @@ export default function Vote() {
     setError("");
 
     try {
+      // Double-check eligibility right before voting
+      console.log("Verifying eligibility before submitting vote");
+      const latestEligibility = await electionService.checkEligibility(id);
+
+      if (latestEligibility.voted) {
+        setError("You have already voted in this election");
+        setTimeout(() => {
+          navigate(`/dashboard/results/${id}`);
+        }, 1000);
+        return;
+      }
+
+      if (!latestEligibility.eligible) {
+        setError("You are not eligible to vote in this election");
+        return;
+      }
+
+      // If still eligible, proceed with voting
       await electionService.vote(id, selectedCandidate);
 
-      // Show success and redirect
+      // Show success state briefly before redirecting
+      console.log("Vote successfully cast, redirecting to results");
       navigate(`/dashboard/results/${id}`);
     } catch (err) {
       console.error("Error submitting vote:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to submit vote";
-      setError(errorMessage);
 
-      // If error indicates user already voted, update eligibility state
-      if (errorMessage.toLowerCase().includes("already voted")) {
+      // Check if the error is "already voted"
+      if (err.message && err.message.includes("already voted")) {
+        setError("You have already voted in this election");
+        // Update the eligibility state to reflect voted status
         setEligibility((prev) => ({ ...prev, voted: true }));
 
-        // Redirect to results page after a short delay
+        // Redirect to results page
         setTimeout(() => {
           navigate(`/dashboard/results/${id}`);
-        }, 2000);
+        }, 1500);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to submit vote");
       }
     } finally {
       setSubmitting(false);
@@ -136,7 +239,7 @@ export default function Vote() {
     );
   }
 
-  if (error && !eligibility.eligible) {
+  if (error && (!eligibility.eligible || eligibility.voted)) {
     return (
       <UserLayout title="Vote">
         <div className="bg-white shadow sm:rounded-lg">
@@ -157,19 +260,38 @@ export default function Vote() {
                 />
               </svg>
               <h3 className="mt-2 text-lg font-medium text-gray-900">
-                Not Eligible
+                {eligibility.voted ? "Already Voted" : "Not Eligible"}
               </h3>
               <p className="mt-1 text-sm text-gray-500">{error}</p>
               <div className="mt-6">
                 <button
                   type="button"
-                  onClick={() => navigate("/dashboard")}
+                  onClick={() => navigate("/dashboard/elections")}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  Return to Dashboard
+                  Return to Elections
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  if (!election) {
+    return (
+      <UserLayout title="Vote">
+        <div className="bg-white shadow sm:rounded-lg p-6">
+          <p>Election not found or no longer available.</p>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/elections")}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+            >
+              View All Elections
+            </button>
           </div>
         </div>
       </UserLayout>
@@ -219,52 +341,58 @@ export default function Vote() {
           </p>
 
           <div className="space-y-4 mt-6">
-            {candidates.map((candidate) => (
-              <div
-                key={candidate.id}
-                className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                  selectedCandidate === candidate.id
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:bg-gray-50"
-                }`}
-                onClick={() => handleCandidateSelect(candidate.id)}
-              >
-                <div className="flex items-center">
-                  <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
-                    {candidate.img ? (
-                      <img
-                        src={`${API_URL}/assets/${candidate.img}`}
-                        alt={candidate.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-gray-500">
-                        {candidate.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <div className="font-medium text-gray-900">
-                      {candidate.name}
+            {candidates.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">
+                No candidates found for this election.
+              </p>
+            ) : (
+              candidates.map((candidate) => (
+                <div
+                  key={candidate.id}
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                    selectedCandidate === candidate.id
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:bg-gray-50"
+                  }`}
+                  onClick={() => handleCandidateSelect(candidate.id)}
+                >
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gray-200">
+                      {candidate.img ? (
+                        <img
+                          src={`${API_URL}/assets/${candidate.img}`}
+                          alt={candidate.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-gray-500">
+                          {candidate.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
-                    {candidate.description && (
-                      <div className="text-sm text-gray-500">
-                        {candidate.description}
+                    <div className="ml-4 flex-1">
+                      <div className="font-medium text-gray-900">
+                        {candidate.name}
                       </div>
-                    )}
-                  </div>
-                  <div className="ml-3">
-                    <input
-                      type="radio"
-                      name="candidate"
-                      checked={selectedCandidate === candidate.id}
-                      onChange={() => handleCandidateSelect(candidate.id)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
+                      {candidate.description && (
+                        <div className="text-sm text-gray-500">
+                          {candidate.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-3">
+                      <input
+                        type="radio"
+                        name="candidate"
+                        checked={selectedCandidate === candidate.id}
+                        onChange={() => handleCandidateSelect(candidate.id)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="mt-8">
@@ -272,9 +400,20 @@ export default function Vote() {
               type="button"
               onClick={handleSubmitVote}
               disabled={
-                !selectedCandidate || submitting || !eligibility.eligible
+                !selectedCandidate ||
+                submitting ||
+                !eligibility.eligible ||
+                eligibility.voted
               }
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
+                ${
+                  !selectedCandidate ||
+                  submitting ||
+                  !eligibility.eligible ||
+                  eligibility.voted
+                    ? "bg-gray-400 cursor-not-allowed opacity-50"
+                    : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                }`}
             >
               {submitting ? (
                 <span className="flex items-center">
@@ -300,13 +439,18 @@ export default function Vote() {
                   </svg>
                   Processing Vote...
                 </span>
+              ) : eligibility.voted ? (
+                "Already Voted"
+              ) : !eligibility.eligible ? (
+                "Not Eligible"
               ) : (
                 "Cast Your Vote"
               )}
             </button>
             <p className="mt-2 text-xs text-center text-gray-500">
-              Note: This action cannot be undone. Your vote will be securely
-              recorded on the blockchain.
+              {eligibility.voted
+                ? "You have already voted in this election."
+                : "Note: This action cannot be undone. Your vote will be securely recorded on the blockchain."}
             </p>
           </div>
         </div>

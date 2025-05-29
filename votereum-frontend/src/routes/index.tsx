@@ -13,6 +13,7 @@ import Login from "../pages/user/Login";
 import SignUp from "../pages/user/SignUp";
 import ProtectedRoute from "../components/ProtectedRoutes";
 import NotFound from "../pages/NotFound";
+import Elections from "../pages/user/Elections";
 
 const router = createBrowserRouter([
   // Public routes
@@ -43,6 +44,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/dashboard/elections",
+    element: (
+      <ProtectedRoute>
+        <Elections />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/dashboard/profile",
     element: (
       <ProtectedRoute>
@@ -66,6 +75,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
 
   // Admin routes
   {

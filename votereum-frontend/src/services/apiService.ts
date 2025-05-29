@@ -472,7 +472,11 @@ export const electionService = {
   },
 
   // Vote in an election
-  vote: async (electionId: string, candidateId: string) => {
+  vote: async (
+    electionId: string,
+    candidateId: string,
+    demoMode: boolean = false
+  ) => {
     try {
       const currentUser = authService.getCurrentUser();
       if (!currentUser) throw new Error("User not authenticated");
@@ -485,21 +489,41 @@ export const electionService = {
       // Get message to sign
       const message = `Vote in election ${electionId} for candidate ${candidateId}`;
 
-      // Request signature from user
-      // This will need to be handled from UI using window.ethereum
-      // Here we handle it as if the signature was already provided
+      // Get signature from MetaMask
       const signature = await requestSignatureFromUser(message);
 
-      // Send vote to blockchain endpoint
-      const response = await api.post(`${BLOCKCHAIN_ENDPOINT}/vote`, {
-        electionId,
-        candidateId,
-        voterAddress: currentUser.ethereum_address,
-        signature,
-        message,
-      });
+      // Send vote to backend
+      try {
+        const response = await api.post("/blockchain-voting/vote", {
+          electionId,
+          candidateId,
+          voterAddress: currentUser.ethereum_address,
+          signature,
+          message,
+          demoMode,
+        });
 
-      return response.data;
+        return response.data;
+      } catch (error) {
+        console.error("Voting error response:", error.response?.data);
+
+        // Look for specific error messages in the response
+        const errorMessage =
+          error.response?.data?.errors?.[0]?.message ||
+          error.response?.data?.message ||
+          error.message;
+
+        // Check for "already voted" message in the error
+        if (
+          errorMessage &&
+          (errorMessage.includes("already voted") ||
+            errorMessage.includes("You have already voted"))
+        ) {
+          throw new Error("You have already voted in this election");
+        }
+
+        throw error;
+      }
     } catch (error) {
       console.error(`Error voting in election ${electionId}:`, error);
       throw error;
