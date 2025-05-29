@@ -329,7 +329,7 @@ export default function About() {
             important decisions.
           </p>
           <Link
-            to="/register"
+            to="/signup"
             className="mt-8 w-full inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-indigo-50 sm:w-auto"
           >
             Sign up for free

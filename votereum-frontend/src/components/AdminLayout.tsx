@@ -48,28 +48,13 @@ export default function AdminLayout({
                 Manage Candidates
               </Link>
             </li>
-            <li>
-              <Link
-                to="/admin/votes"
-                className="block p-2 hover:bg-gray-100 rounded"
-              >
-                Vote Management
-              </Link>
-            </li>
+
             <li>
               <Link
                 to="/admin/results"
                 className="block p-2 hover:bg-gray-100 rounded"
               >
                 Results
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/admin/users"
-                className="block p-2 hover:bg-gray-100 rounded"
-              >
-                User Management
               </Link>
             </li>
             <li className="pt-4 mt-4 border-t">

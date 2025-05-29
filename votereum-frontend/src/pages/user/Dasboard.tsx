@@ -324,7 +324,7 @@ export default function UserDashboard() {
           </div>
         )}
 
-        <div className="px-4 py-5 sm:p-6 border-t border-gray-200">
+        {/* <div className="px-4 py-5 sm:p-6 border-t border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">
             Voting History
           </h3>
@@ -399,7 +399,7 @@ export default function UserDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </UserLayout>
   );

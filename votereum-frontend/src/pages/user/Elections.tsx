@@ -185,15 +185,13 @@ export default function Elections() {
                               </Link>
                             )}
 
-                          {(eligibility.voted ||
-                            statusInfo.status === "closed") && (
-                            <Link
-                              to={`/dashboard/results/${election.id}`}
-                              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                            >
-                              View Results
-                            </Link>
-                          )}
+                          {/* Always show the Results button for all elections */}
+                          <Link
+                            to={`/dashboard/results/${election.id}`}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                          >
+                            View Results
+                          </Link>
 
                           {statusInfo.status === "upcoming" && (
                             <span className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-gray-50 cursor-not-allowed">

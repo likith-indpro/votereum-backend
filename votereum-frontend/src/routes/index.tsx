@@ -13,7 +13,9 @@ import Login from "../pages/user/Login";
 import SignUp from "../pages/user/SignUp";
 import ProtectedRoute from "../components/ProtectedRoutes";
 import NotFound from "../pages/NotFound";
+import AdminResults from "../pages/admin/AdminResults";
 import Elections from "../pages/user/Elections";
+import ManageCandidates from "../pages/admin/ManageCandidates";
 
 const router = createBrowserRouter([
   // Public routes
@@ -76,7 +78,6 @@ const router = createBrowserRouter([
     ),
   },
 
-
   // Admin routes
   {
     path: "/admin",
@@ -102,6 +103,24 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  {
+    path: "/admin/candidates",
+    element: (
+      <ProtectedRoute requireAdmin={true}>
+        <ManageCandidates />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/admin/results",
+    element: (
+      <ProtectedRoute requireAdmin={true}>
+        <AdminResults />
+      </ProtectedRoute>
+    ),
+  },
+
   //   {
   //     path: "/admin/voters",
   //     element: (

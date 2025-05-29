@@ -530,6 +530,59 @@ export const electionService = {
     }
   },
 
+  // Add this function to your electionService object
+
+  // Update candidate details
+  updateCandidate: async (
+    electionId: string,
+    candidateId: string,
+    candidateData: {
+      name: string;
+      description?: string;
+      email?: string;
+    }
+  ) => {
+    try {
+      const response = await api.patch(`/items/candidates/${candidateId}`, {
+        name: candidateData.name,
+        description: candidateData.description,
+        email: candidateData.email,
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error updating candidate ${candidateId}:`, error);
+      throw error;
+    }
+  },
+
+  // Add this function to your electionService object
+
+  // Get voters for an election
+  getVoters: async (electionId: string) => {
+    try {
+      const response = await api.get(`/items/voters`, {
+        params: {
+          filter: {
+            election: {
+              _eq: electionId,
+            },
+          },
+          fields: [
+            "id",
+            "voted",
+            "selected_candidates",
+            "voter_user.id",
+            "voter_user.ethereum_address",
+          ],
+        },
+      });
+      return response.data.data || [];
+    } catch (error) {
+      console.error(`Error fetching voters for election ${electionId}:`, error);
+      throw error;
+    }
+  },
+
   // Get election results from blockchain
   getResults: async (electionId: string) => {
     try {
