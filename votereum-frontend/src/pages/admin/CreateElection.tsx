@@ -148,7 +148,7 @@ export default function CreateElection() {
 
       // Redirect after a delay
       setTimeout(() => {
-        navigate("/admin/elections");
+        navigate("/admin/dashboard");
       }, 2000);
     } catch (err) {
       console.error("Error creating election:", err);

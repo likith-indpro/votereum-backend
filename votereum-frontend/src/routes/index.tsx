@@ -120,6 +120,14 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/admin/results/:id",
+    element: (
+      <ProtectedRoute requireAdmine={true}>
+        <AdminResults />
+      </ProtectedRoute>
+    ),
+  },
 
   //   {
   //     path: "/admin/voters",
